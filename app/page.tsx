@@ -66,6 +66,7 @@ function rebaseRows(rows: any[], keys: string[]) {
     for (const key of keys) {
       const baseValue = Number(base[key]);
       const currentValue = Number(row[key]);
+
       rebased[key] = baseValue
         ? Number(((currentValue / baseValue) * 100).toFixed(2))
         : null;
@@ -153,6 +154,7 @@ export default function Page() {
           <div>
             <p style={styles.subText}>Financial Market Portfolio</p>
             <h1 style={styles.title}>KOSPI × NASDAQ Coupling Lab</h1>
+            <p style={styles.ownerText}>Built by Seunghyun Kim</p>
           </div>
 
           <button onClick={loadData} style={styles.refreshButton}>
@@ -369,6 +371,9 @@ export default function Page() {
           <div>
             <p style={styles.subText}>About This Project</p>
             <h2 style={styles.sectionTitle}>프로젝트 소개</h2>
+            <p style={styles.profileLine}>
+              김승현 | 경제통상학 전공 · 금융권 취업 포트폴리오
+            </p>
             <p style={styles.aboutText}>
               이 프로젝트는 경제통상학 전공자로서 국내외 주식시장의 연동성을 데이터 기반으로
               해석하기 위해 제작한 금융시장 분석 포트폴리오입니다. 단순히 지수 수준을 비교하는
@@ -434,6 +439,11 @@ const styles: Record<string, React.CSSProperties> = {
   subText: {
     color: "#94a3b8",
     margin: 0,
+    fontSize: 14
+  },
+  ownerText: {
+    color: "#cbd5e1",
+    margin: "6px 0 0 0",
     fontSize: 14
   },
   refreshButton: {
@@ -559,7 +569,13 @@ const styles: Record<string, React.CSSProperties> = {
   },
   sectionTitle: {
     fontSize: 28,
-    margin: "8px 0 12px 0"
+    margin: "8px 0 8px 0"
+  },
+  profileLine: {
+    color: "#e2e8f0",
+    margin: "0 0 14px 0",
+    fontSize: 15,
+    fontWeight: 700
   },
   aboutText: {
     color: "#cbd5e1",
