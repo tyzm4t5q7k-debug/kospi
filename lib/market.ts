@@ -1,9 +1,6 @@
-import yahooFinance from "yahoo-finance2";
-
-type Point = {
-  date: Date;
-  close?: number;
-  adjClose?: number;
+type IndexedPoint = {
+  month: string;
+  value: number;
 };
 
 const sectors = {
@@ -37,49 +34,84 @@ const sectors = {
   }
 };
 
-function indexTo100(points: Point[]) {
-  const sorted = points
-    .filter((p) => p.close || p.adjClose)
-    .sort((a, b) => a.date.getTime() - b.date.getTime());
-
-  const base = sorted[0]?.adjClose ?? sorted[0]?.close;
-  if (!base) return [];
-
-  return sorted.map((p) => {
-    const price = p.adjClose ?? p.close ?? 0;
-    return {
-      month: p.date.toISOString().slice(0, 7),
-      value: Number(((price / base) * 100).toFixed(2))
-    };
-  });
+function unix(date: string) {
+  return Math.floor(new Date(date).getTime() / 1000);
 }
 
-async function fetchIndex(symbol: string) {
-  const result = await yahooFinance.historical(symbol, {
-    period1: "2024-01-01",
-    period2: new Date().toISOString().slice(0, 10),
-    interval: "1mo"
+function dateFromUnix(timestamp: number) {
+  return new Date(timestamp * 1000).toISOString().slice(0, 10);
+}
+
+async function fetchYahooChart(symbol: string): Promise<IndexedPoint[]> {
+  const period1 = unix("2024-01-01");
+  const period2 = Math.floor(Date.now() / 1000);
+
+  const url =
+    `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}` +
+    `?period1=${period1}&period2=${period2}&interval=1d&events=history&includeAdjustedClose=true`;
+
+  const res = await fetch(url, {
+    headers: {
+      "User-Agent": "Mozilla/5.0",
+      "Accept": "application/json"
+    },
+    cache: "no-store"
   });
 
-  return indexTo100(result as Point[]);
+  if (!res.ok) {
+    throw new Error(`Yahoo Finance request failed: ${symbol} ${res.status}`);
+  }
+
+  const json = await res.json();
+  const result = json?.chart?.result?.[0];
+
+  if (!result) {
+    throw new Error(`No Yahoo Finance result: ${symbol}`);
+  }
+
+  const timestamps: number[] = result.timestamp || [];
+  const quote = result.indicators?.quote?.[0];
+  const adjClose = result.indicators?.adjclose?.[0]?.adjclose || [];
+  const close = quote?.close || [];
+
+  const raw = timestamps
+    .map((time, index) => ({
+      month: dateFromUnix(time),
+      price: adjClose[index] ?? close[index]
+    }))
+    .filter((p) => typeof p.price === "number" && Number.isFinite(p.price));
+
+  const base = raw[0]?.price;
+
+  if (!base) {
+    throw new Error(`No valid price data: ${symbol}`);
+  }
+
+  return raw.map((p) => ({
+    month: p.month,
+    value: Number(((p.price / base) * 100).toFixed(2))
+  }));
+}
+
+async function safeFetch(symbol: string) {
+  try {
+    return await fetchYahooChart(symbol);
+  } catch (error) {
+    console.error(symbol, error);
+    return [];
+  }
 }
 
 async function fetchBasket(symbols: string[]) {
-  const series = await Promise.all(
-    symbols.map(async (symbol) => {
-      try {
-        return await fetchIndex(symbol);
-      } catch {
-        return [];
-      }
-    })
-  );
+  const allSeries = await Promise.all(symbols.map((symbol) => safeFetch(symbol)));
 
   const map = new Map<string, number[]>();
 
-  for (const item of series) {
-    for (const point of item) {
-      if (!map.has(point.month)) map.set(point.month, []);
+  for (const series of allSeries) {
+    for (const point of series) {
+      if (!map.has(point.month)) {
+        map.set(point.month, []);
+      }
       map.get(point.month)?.push(point.value);
     }
   }
@@ -94,7 +126,7 @@ async function fetchBasket(symbols: string[]) {
     }));
 }
 
-function mergeSeries(a: any[], b: any[], aKey: string, bKey: string) {
+function mergeSeries(a: IndexedPoint[], b: IndexedPoint[], aKey: string, bKey: string) {
   const bMap = new Map(b.map((p) => [p.month, p.value]));
 
   return a
@@ -120,20 +152,22 @@ function correlation(x: number[], y: number[]) {
   for (let i = 0; i < x.length; i++) {
     const xd = x[i] - xMean;
     const yd = y[i] - yMean;
+
     numerator += xd * yd;
     xDenominator += xd * xd;
     yDenominator += yd * yd;
   }
 
   const denominator = Math.sqrt(xDenominator * yDenominator);
+
   if (!denominator) return null;
 
   return Number((numerator / denominator).toFixed(3));
 }
 
 export async function getMarketData() {
-  const kospi = await fetchIndex("^KS11");
-  const nasdaq = await fetchIndex("^IXIC");
+  const kospi = await fetchYahooChart("^KS11");
+  const nasdaq = await fetchYahooChart("^IXIC");
 
   const indexData = mergeSeries(kospi, nasdaq, "kospi", "nasdaq");
 
@@ -159,7 +193,7 @@ export async function getMarketData() {
 
   return {
     updatedAt: new Date().toISOString(),
-    source: "Yahoo Finance",
+    source: "Yahoo Finance Chart API - Daily Data",
     indexData,
     indexCorrelation: correlation(
       indexData.map((d: any) => d.kospi),
