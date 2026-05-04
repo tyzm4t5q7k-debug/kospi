@@ -31,6 +31,55 @@ const sectors = {
     usName: "Lockheed Martin · RTX · Northrop Grumman",
     korea: ["012450.KS", "064350.KS", "079550.KS"],
     us: ["LMT", "RTX", "NOC"]
+  },
+  ai: {
+    label: "AI",
+    koreaName: "NAVER · 카카오 · 더존비즈온",
+    usName: "Microsoft · Meta · Palantir",
+    korea: ["035420.KS", "035720.KS", "012510.KS"],
+    us: ["MSFT", "META", "PLTR"]
+  },
+  shipbuilding: {
+    label: "조선",
+    koreaName: "HD현대중공업 · 삼성중공업 · 한화오션",
+    usName: "Huntington Ingalls · General Dynamics",
+    korea: ["329180.KS", "010140.KS", "042660.KS"],
+    us: ["HII", "GD"]
+  },
+  power: {
+    label: "전력기기",
+    koreaName: "HD현대일렉트릭 · LS ELECTRIC · 효성중공업",
+    usName: "GE Vernova · Eaton · Quanta Services",
+    korea: ["267260.KS", "010120.KS", "298040.KS"],
+    us: ["GEV", "ETN", "PWR"]
+  },
+  bio: {
+    label: "바이오",
+    koreaName: "삼성바이오로직스 · 셀트리온 · 유한양행",
+    usName: "Eli Lilly · Pfizer · Moderna",
+    korea: ["207940.KS", "068270.KS", "000100.KS"],
+    us: ["LLY", "PFE", "MRNA"]
+  },
+  finance: {
+    label: "금융",
+    koreaName: "KB금융 · 신한지주 · 하나금융지주",
+    usName: "JPMorgan · Bank of America · Wells Fargo",
+    korea: ["105560.KS", "055550.KS", "086790.KS"],
+    us: ["JPM", "BAC", "WFC"]
+  },
+  nuclear: {
+    label: "원전",
+    koreaName: "두산에너빌리티 · 한전기술 · 우리기술",
+    usName: "Cameco · Constellation Energy · BWX Technologies",
+    korea: ["034020.KS", "052690.KS", "032820.KQ"],
+    us: ["CCJ", "CEG", "BWXT"]
+  },
+  robot: {
+    label: "로봇",
+    koreaName: "두산로보틱스 · 레인보우로보틱스 · 로보티즈",
+    usName: "Intuitive Surgical · Rockwell Automation · Teradyne",
+    korea: ["454910.KS", "277810.KQ", "108490.KQ"],
+    us: ["ISRG", "ROK", "TER"]
   }
 };
 
