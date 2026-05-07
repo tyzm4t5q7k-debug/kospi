@@ -180,7 +180,8 @@ const [periodKey, setPeriodKey] = useState("ALL");
 const stockPairList = Object.values(data.stockPairs || {});
 const selectedStockPair =
   data.stockPairs?.[stockPairKey] || stockPairList[0];
-
+const sectorList = Object.values(data.sectors || {});
+const selectedSector = data.sectors?.[sectorKey] || sectorList[0];
 const filteredStockPairData = useMemo(() => {
   if (!selectedStockPair?.data) return [];
 
