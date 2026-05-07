@@ -282,18 +282,19 @@ export async function getMarketData() {
       )
     };
   }
-  const sectorData: any = {};
 
-  for (const [key, sector] of Object.entries(sectors)) {
-    const korea = await fetchBasket(sector.korea);
-    const us = await fetchBasket(sector.us);
+  const stockPairData: any = {};
+
+  for (const [key, pair] of Object.entries(stockPairs)) {
+    const korea = await safeFetch(pair.korea);
+    const us = await safeFetch(pair.us);
     const data = mergeSeries(korea, us, "korea", "us");
 
-    sectorData[key] = {
+    stockPairData[key] = {
       key,
-      label: sector.label,
-      koreaName: sector.koreaName,
-      usName: sector.usName,
+      label: pair.label,
+      koreaName: pair.koreaName,
+      usName: pair.usName,
       data,
       correlation: correlation(
         data.map((d: any) => d.korea),
@@ -301,6 +302,7 @@ export async function getMarketData() {
       )
     };
   }
+
   return {
     updatedAt: new Date().toISOString(),
     source: "Yahoo Finance Chart API - Daily Data",
@@ -312,4 +314,5 @@ export async function getMarketData() {
     sectors: sectorData,
     stockPairs: stockPairData
   };
+}
 }
