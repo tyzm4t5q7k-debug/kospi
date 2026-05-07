@@ -83,14 +83,59 @@ function rebaseRows(rows: any[], keys: string[]) {
 }
 
 function calculateReturn(rows: any[], key: string) {
-  if (rows.length < 2) return "-";
+  if (rows.length < 2) return null;
 
   const first = Number(rows[0][key]);
   const last = Number(rows[rows.length - 1][key]);
 
-  if (!first) return "-";
+  if (!first) return null;
 
-  return `${(((last / first) - 1) * 100).toFixed(1)}%`;
+  return Number((((last / first) - 1) * 100).toFixed(1));
+}
+
+function formatReturn(value: number | null) {
+  if (value === null) return "-";
+  return `${value.toFixed(1)}%`;
+}
+
+function makeIndexInsight(kospiReturn: number | null, nasdaqReturn: number | null) {
+  if (kospiReturn === null || nasdaqReturn === null) {
+    return "데이터를 불러오면 선택 기간 기준의 시장 흐름 해석이 표시됩니다.";
+  }
+
+  const gap = Number((kospiReturn - nasdaqReturn).toFixed(1));
+
+  if (gap > 3) {
+    return `선택 기간 동안 KOSPI는 NASDAQ보다 ${gap.toFixed(1)}%p 강한 흐름을 보였습니다. 이 구간에서는 한국 시장의 반등 탄력이 미국 성장주 중심 시장보다 상대적으로 컸다고 해석할 수 있습니다.`;
+  }
+
+  if (gap < -3) {
+    return `선택 기간 동안 NASDAQ은 KOSPI보다 ${Math.abs(gap).toFixed(1)}%p 강한 흐름을 보였습니다. 이 구간에서는 미국 기술주 중심의 상승 모멘텀이 한국 시장보다 우세했다고 해석할 수 있습니다.`;
+  }
+
+  return `선택 기간 동안 KOSPI와 NASDAQ의 수익률 격차는 ${Math.abs(gap).toFixed(1)}%p 수준입니다. 두 시장이 비교적 비슷한 방향으로 움직인 구간으로 볼 수 있습니다.`;
+}
+
+function makeSectorInsight(
+  sectorName: string,
+  koreaReturn: number | null,
+  usReturn: number | null
+) {
+  if (koreaReturn === null || usReturn === null) {
+    return "섹터 데이터를 불러오면 한국 테마와 미국 테마의 상대적 강도 해석이 표시됩니다.";
+  }
+
+  const gap = Number((koreaReturn - usReturn).toFixed(1));
+
+  if (gap > 5) {
+    return `${sectorName} 섹터에서는 선택 기간 동안 한국 테마 바스켓이 미국 테마 바스켓보다 ${gap.toFixed(1)}%p 강했습니다. 국내 종목군이 해당 테마에서 상대적으로 더 민감하게 반응한 구간입니다.`;
+  }
+
+  if (gap < -5) {
+    return `${sectorName} 섹터에서는 선택 기간 동안 미국 테마 바스켓이 한국 테마 바스켓보다 ${Math.abs(gap).toFixed(1)}%p 강했습니다. 글로벌 선도주 중심의 모멘텀이 더 뚜렷했던 구간으로 볼 수 있습니다.`;
+  }
+
+  return `${sectorName} 섹터에서는 한국과 미국 테마 바스켓의 수익률 격차가 ${Math.abs(gap).toFixed(1)}%p 수준입니다. 양국 테마주가 비교적 유사한 방향성을 보인 구간입니다.`;
 }
 
 export default function Page() {
@@ -140,12 +185,33 @@ export default function Page() {
     return rebaseRows(filtered, ["korea", "us"]);
   }, [selectedSector, periodKey]);
 
-  const summary = useMemo(() => {
-    return {
-      kospi: calculateReturn(filteredIndexData, "kospi"),
-      nasdaq: calculateReturn(filteredIndexData, "nasdaq")
-    };
+  const kospiReturn = useMemo(() => {
+    return calculateReturn(filteredIndexData, "kospi");
   }, [filteredIndexData]);
+
+  const nasdaqReturn = useMemo(() => {
+    return calculateReturn(filteredIndexData, "nasdaq");
+  }, [filteredIndexData]);
+
+  const koreaThemeReturn = useMemo(() => {
+    return calculateReturn(filteredSectorData, "korea");
+  }, [filteredSectorData]);
+
+  const usThemeReturn = useMemo(() => {
+    return calculateReturn(filteredSectorData, "us");
+  }, [filteredSectorData]);
+
+  const indexInsight = useMemo(() => {
+    return makeIndexInsight(kospiReturn, nasdaqReturn);
+  }, [kospiReturn, nasdaqReturn]);
+
+  const sectorInsight = useMemo(() => {
+    return makeSectorInsight(
+      selectedSector?.label || "선택 섹터",
+      koreaThemeReturn,
+      usThemeReturn
+    );
+  }, [selectedSector, koreaThemeReturn, usThemeReturn]);
 
   return (
     <main style={styles.page}>
@@ -193,12 +259,12 @@ export default function Page() {
             <div style={styles.stats}>
               <div style={styles.statBox}>
                 <p style={styles.subText}>선택 기간 KOSPI 수익률</p>
-                <h3>{summary.kospi}</h3>
+                <h3>{formatReturn(kospiReturn)}</h3>
               </div>
 
               <div style={styles.statBox}>
                 <p style={styles.subText}>선택 기간 NASDAQ 수익률</p>
-                <h3>{summary.nasdaq}</h3>
+                <h3>{formatReturn(nasdaqReturn)}</h3>
               </div>
 
               <div style={styles.statBox}>
@@ -232,6 +298,53 @@ export default function Page() {
                 반도체, 2차전지, 자동차, 방산, AI, 조선, 전력기기, 바이오, 금융,
                 원전, 로봇을 비교합니다.
               </p>
+            </div>
+          </div>
+        </section>
+
+        <section style={styles.insightSection}>
+          <div style={styles.insightCard}>
+            <p style={styles.subText}>Market Insight</p>
+            <h2 style={styles.insightTitle}>시장 자동 분석 코멘트</h2>
+            <p style={styles.insightText}>{indexInsight}</p>
+          </div>
+
+          <div style={styles.insightCard}>
+            <p style={styles.subText}>Sector Insight</p>
+            <h2 style={styles.insightTitle}>섹터 자동 분석 코멘트</h2>
+            <p style={styles.insightText}>{sectorInsight}</p>
+          </div>
+        </section>
+
+        <section style={styles.summarySection}>
+          <div>
+            <p style={styles.subText}>Project Summary</p>
+            <h2 style={styles.sectionTitle}>프로젝트 요약</h2>
+          </div>
+
+          <div style={styles.summaryGrid}>
+            <div style={styles.summaryCard}>
+              <p style={styles.subText}>Data Source</p>
+              <h3>Yahoo Finance</h3>
+              <p>일별 시장 데이터를 자동으로 불러와 지수와 테마주 흐름을 비교합니다.</p>
+            </div>
+
+            <div style={styles.summaryCard}>
+              <p style={styles.subText}>Method</p>
+              <h3>Indexing · Return · Correlation</h3>
+              <p>기준일 100 지수화, 기간별 수익률, 상관계수, 섹터 바스켓 비교를 활용합니다.</p>
+            </div>
+
+            <div style={styles.summaryCard}>
+              <p style={styles.subText}>Tech Stack</p>
+              <h3>Next.js · TypeScript · Recharts · Vercel</h3>
+              <p>웹 배포, API 라우트, 차트 시각화, 자동 데이터 호출 구조로 구성했습니다.</p>
+            </div>
+
+            <div style={styles.summaryCard}>
+              <p style={styles.subText}>Purpose</p>
+              <h3>금융권 취업 포트폴리오</h3>
+              <p>시장 데이터를 해석하고 고객에게 설명할 수 있는 금융 실무형 사고를 보여줍니다.</p>
             </div>
           </div>
         </section>
@@ -333,6 +446,27 @@ export default function Page() {
                 <div style={styles.statBox}>
                   <p style={styles.subText}>전체 기간 섹터 상관계수</p>
                   <h3>{selectedSector.correlation ?? "-"}</h3>
+                </div>
+              </div>
+
+              <div style={styles.stats}>
+                <div style={styles.statBox}>
+                  <p style={styles.subText}>선택 기간 한국 테마 수익률</p>
+                  <h3>{formatReturn(koreaThemeReturn)}</h3>
+                </div>
+
+                <div style={styles.statBox}>
+                  <p style={styles.subText}>선택 기간 미국 테마 수익률</p>
+                  <h3>{formatReturn(usThemeReturn)}</h3>
+                </div>
+
+                <div style={styles.statBox}>
+                  <p style={styles.subText}>상대 강도</p>
+                  <h3>
+                    {koreaThemeReturn !== null && usThemeReturn !== null
+                      ? `${(koreaThemeReturn - usThemeReturn).toFixed(1)}%p`
+                      : "-"}
+                  </h3>
                 </div>
               </div>
 
@@ -521,6 +655,47 @@ const styles: Record<string, React.CSSProperties> = {
   },
   notice: {
     color: "#94a3b8"
+  },
+  insightSection: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, 1fr)",
+    gap: 16,
+    marginBottom: 24
+  },
+  insightCard: {
+    border: "1px solid #1e293b",
+    background: "#0f172a",
+    borderRadius: 28,
+    padding: 28
+  },
+  insightTitle: {
+    fontSize: 22,
+    margin: "8px 0 12px 0"
+  },
+  insightText: {
+    color: "#cbd5e1",
+    lineHeight: 1.8,
+    fontSize: 16
+  },
+  summarySection: {
+    border: "1px solid #1e293b",
+    background: "#0f172a",
+    borderRadius: 28,
+    padding: 28,
+    marginBottom: 24
+  },
+  summaryGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(4, 1fr)",
+    gap: 14,
+    marginTop: 20
+  },
+  summaryCard: {
+    background: "#1e293b",
+    borderRadius: 18,
+    padding: 18,
+    color: "#cbd5e1",
+    lineHeight: 1.6
   },
   chartCard: {
     border: "1px solid #1e293b",
