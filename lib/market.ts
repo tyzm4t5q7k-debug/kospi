@@ -312,3 +312,4 @@ export async function getMarketData() {
     sectors: sectorData,
     stockPairs: stockPairData
   };
+}
