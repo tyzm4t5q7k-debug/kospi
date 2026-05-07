@@ -23,6 +23,7 @@ type MarketData = {
   indexCorrelation: number | null;
   indexData: any[];
   sectors: Record<string, any>;
+  stockPairs?: Record<string, any>;
 };
 
 const fallback: MarketData = {
@@ -142,8 +143,9 @@ export default function Page() {
   const [data, setData] = useState<MarketData>(fallback);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"index" | "spread">("index");
-  const [sectorKey, setSectorKey] = useState("semiconductor");
-  const [periodKey, setPeriodKey] = useState("ALL");
+const [sectorKey, setSectorKey] = useState("semiconductor");
+const [stockPairKey, setStockPairKey] = useState("samsungNvidia");
+const [periodKey, setPeriodKey] = useState("ALL");
   const [error, setError] = useState("");
 
   async function loadData() {
@@ -175,9 +177,24 @@ export default function Page() {
     return rebaseRows(filtered, ["kospi", "nasdaq"]);
   }, [data.indexData, periodKey]);
 
-  const sectorList = Object.values(data.sectors || {});
-  const selectedSector = data.sectors?.[sectorKey] || sectorList[0];
+const stockPairList = Object.values(data.stockPairs || {});
+const selectedStockPair =
+  data.stockPairs?.[stockPairKey] || stockPairList[0];
 
+const filteredStockPairData = useMemo(() => {
+  if (!selectedStockPair?.data) return [];
+
+  const filtered = filterByPeriod(selectedStockPair.data, periodKey);
+  return rebaseRows(filtered, ["korea", "us"]);
+}, [selectedStockPair, periodKey]);
+
+const koreaStockReturn = useMemo(() => {
+  return calculateReturn(filteredStockPairData, "korea");
+}, [filteredStockPairData]);
+
+const usStockReturn = useMemo(() => {
+  return calculateReturn(filteredStockPairData, "us");
+}, [filteredStockPairData]);
   const filteredSectorData = useMemo(() => {
     if (!selectedSector?.data) return [];
 
@@ -500,7 +517,96 @@ export default function Page() {
             <p style={styles.notice}>섹터 데이터를 불러오는 중입니다.</p>
           )}
         </section>
+<section style={styles.chartCard}>
+  <div style={styles.chartHeader}>
+    <div>
+      <p style={styles.subText}>Single Stock Comparison</p>
+      <h2>개별 종목 한국·미국 비교</h2>
+    </div>
 
+    <div style={styles.buttonGroup}>
+      {stockPairList.map((pair: any) => (
+        <button
+          key={pair.key}
+          onClick={() => setStockPairKey(pair.key)}
+          style={stockPairKey === pair.key ? styles.activeButton : styles.button}
+        >
+          {pair.label}
+        </button>
+      ))}
+    </div>
+  </div>
+
+  {selectedStockPair ? (
+    <>
+      <div style={styles.stats}>
+        <div style={styles.statBox}>
+          <p style={styles.subText}>한국 종목</p>
+          <h3>{selectedStockPair.koreaName}</h3>
+        </div>
+
+        <div style={styles.statBox}>
+          <p style={styles.subText}>미국 종목</p>
+          <h3>{selectedStockPair.usName}</h3>
+        </div>
+
+        <div style={styles.statBox}>
+          <p style={styles.subText}>전체 기간 상관계수</p>
+          <h3>{selectedStockPair.correlation ?? "-"}</h3>
+        </div>
+      </div>
+
+      <div style={styles.stats}>
+        <div style={styles.statBox}>
+          <p style={styles.subText}>선택 기간 한국 종목 수익률</p>
+          <h3>{formatReturn(koreaStockReturn)}</h3>
+        </div>
+
+        <div style={styles.statBox}>
+          <p style={styles.subText}>선택 기간 미국 종목 수익률</p>
+          <h3>{formatReturn(usStockReturn)}</h3>
+        </div>
+
+        <div style={styles.statBox}>
+          <p style={styles.subText}>상대 강도</p>
+          <h3>
+            {koreaStockReturn !== null && usStockReturn !== null
+              ? `${(koreaStockReturn - usStockReturn).toFixed(1)}%p`
+              : "-"}
+          </h3>
+        </div>
+      </div>
+
+      <div style={styles.chartBox}>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={filteredStockPairData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+            <XAxis dataKey="month" stroke="#94a3b8" minTickGap={28} />
+            <YAxis stroke="#94a3b8" />
+            <Tooltip />
+            <Legend />
+            <Line
+              type="monotone"
+              dataKey="korea"
+              name={selectedStockPair.koreaName}
+              strokeWidth={3}
+              dot={false}
+            />
+            <Line
+              type="monotone"
+              dataKey="us"
+              name={selectedStockPair.usName}
+              strokeWidth={3}
+              dot={false}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </>
+  ) : (
+    <p style={styles.notice}>개별 종목 데이터를 불러오는 중입니다.</p>
+  )}
+</section>
         <section style={styles.aboutSection}>
           <div>
             <p style={styles.subText}>About This Project</p>
