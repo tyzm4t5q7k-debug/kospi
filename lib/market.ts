@@ -82,7 +82,50 @@ const sectors = {
     us: ["ISRG", "ROK", "TER"]
   }
 };
-
+const stockPairs = {
+  samsungNvidia: {
+    label: "삼성전자 vs NVIDIA",
+    koreaName: "삼성전자",
+    usName: "NVIDIA",
+    korea: "005930.KS",
+    us: "NVDA"
+  },
+  hynixNvidia: {
+    label: "SK하이닉스 vs NVIDIA",
+    koreaName: "SK하이닉스",
+    usName: "NVIDIA",
+    korea: "000660.KS",
+    us: "NVDA"
+  },
+  hyundaiTesla: {
+    label: "현대차 vs Tesla",
+    koreaName: "현대차",
+    usName: "Tesla",
+    korea: "005380.KS",
+    us: "TSLA"
+  },
+  hanwhaLockheed: {
+    label: "한화에어로스페이스 vs Lockheed Martin",
+    koreaName: "한화에어로스페이스",
+    usName: "Lockheed Martin",
+    korea: "012450.KS",
+    us: "LMT"
+  },
+  kbJpm: {
+    label: "KB금융 vs JPMorgan",
+    koreaName: "KB금융",
+    usName: "JPMorgan",
+    korea: "105560.KS",
+    us: "JPM"
+  },
+  naverMicrosoft: {
+    label: "NAVER vs Microsoft",
+    koreaName: "NAVER",
+    usName: "Microsoft",
+    korea: "035420.KS",
+    us: "MSFT"
+  }
+};
 function unix(date: string) {
   return Math.floor(new Date(date).getTime() / 1000);
 }
@@ -239,7 +282,25 @@ export async function getMarketData() {
       )
     };
   }
+  const sectorData: any = {};
 
+  for (const [key, sector] of Object.entries(sectors)) {
+    const korea = await fetchBasket(sector.korea);
+    const us = await fetchBasket(sector.us);
+    const data = mergeSeries(korea, us, "korea", "us");
+
+    sectorData[key] = {
+      key,
+      label: sector.label,
+      koreaName: sector.koreaName,
+      usName: sector.usName,
+      data,
+      correlation: correlation(
+        data.map((d: any) => d.korea),
+        data.map((d: any) => d.us)
+      )
+    };
+  }
   return {
     updatedAt: new Date().toISOString(),
     source: "Yahoo Finance Chart API - Daily Data",
@@ -248,6 +309,6 @@ export async function getMarketData() {
       indexData.map((d: any) => d.kospi),
       indexData.map((d: any) => d.nasdaq)
     ),
-    sectors: sectorData
+    sectors: sectorData,
+    stockPairs: stockPairData
   };
-}
