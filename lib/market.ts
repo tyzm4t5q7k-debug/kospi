@@ -82,6 +82,7 @@ const sectors = {
     us: ["ISRG", "ROK", "TER"]
   }
 };
+
 const stockPairs = {
   samsungNvidia: {
     label: "삼성전자 vs NVIDIA",
@@ -126,6 +127,28 @@ const stockPairs = {
     us: "MSFT"
   }
 };
+
+const macroIndicators = {
+  usdkrw: {
+    label: "원/달러 환율",
+    name: "USD/KRW",
+    ticker: "KRW=X",
+    description: "원화 대비 달러 가치 흐름을 보여주는 환율 지표입니다."
+  },
+  us10y: {
+    label: "미국 10년물 국채금리",
+    name: "U.S. 10Y Treasury Yield",
+    ticker: "^TNX",
+    description: "미국 장기금리 흐름을 보여주는 대표 금리 지표입니다."
+  },
+  dxy: {
+    label: "달러인덱스",
+    name: "Dollar Index",
+    ticker: "DX-Y.NYB",
+    description: "달러의 전반적인 강세·약세 흐름을 보여주는 지표입니다."
+  }
+};
+
 function unix(date: string) {
   return Math.floor(new Date(date).getTime() / 1000);
 }
@@ -145,7 +168,7 @@ async function fetchYahooChart(symbol: string): Promise<IndexedPoint[]> {
   const res = await fetch(url, {
     headers: {
       "User-Agent": "Mozilla/5.0",
-      "Accept": "application/json"
+      Accept: "application/json"
     },
     cache: "no-store"
   });
@@ -204,6 +227,7 @@ async function fetchBasket(symbols: string[]) {
       if (!map.has(point.month)) {
         map.set(point.month, []);
       }
+
       map.get(point.month)?.push(point.value);
     }
   }
@@ -303,6 +327,21 @@ export async function getMarketData() {
     };
   }
 
+  const macroIndicatorData: any = {};
+
+  for (const [key, indicator] of Object.entries(macroIndicators)) {
+    const data = await safeFetch(indicator.ticker);
+
+    macroIndicatorData[key] = {
+      key,
+      label: indicator.label,
+      name: indicator.name,
+      ticker: indicator.ticker,
+      description: indicator.description,
+      data
+    };
+  }
+
   return {
     updatedAt: new Date().toISOString(),
     source: "Yahoo Finance Chart API - Daily Data",
@@ -312,6 +351,7 @@ export async function getMarketData() {
       indexData.map((d: any) => d.nasdaq)
     ),
     sectors: sectorData,
-    stockPairs: stockPairData
+    stockPairs: stockPairData,
+    macroIndicators: macroIndicatorData
   };
 }
