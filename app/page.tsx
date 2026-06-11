@@ -945,33 +945,32 @@ export default function Page() {
             </div>
           </div>
         </section>
-                <section style={styles.linkSection}>
-          <div>
-            <p style={styles.subText}>Contact & Links</p>
-            <h2 style={styles.sectionTitle}>포트폴리오 링크</h2>
-            <p style={styles.aboutText}>
-              관련 활동, 코드 저장소, 블로그 기록을 함께 연결해 프로젝트의 확장성을 보여줄 수 있습니다.
-            </p>
-          </div>
+               <section style={styles.linkSection}>
+  <div>
+    <p style={styles.subText}>Contact & Links</p>
+    <h2 style={styles.sectionTitle}>포트폴리오 링크</h2>
+    <p style={styles.aboutText}>
+      블로그 기록과 이메일을 통해 프로젝트와 관련 활동을 확인할 수 있습니다.
+    </p>
+  </div>
 
-          <div style={styles.linkButtonGroup}>
-            <a style={styles.linkButton} href="#" target="_blank">
-              GitHub
-            </a>
+  <div style={styles.linkButtonGroup}>
+    <a
+      style={styles.linkButton}
+      href="https://blog.naver.com/snghnkm"
+      target="_blank"
+    >
+      Blog
+    </a>
 
-            <a style={styles.linkButton} href="#" target="_blank">
-              Blog
-            </a>
-
-            <a style={styles.linkButton} href="#" target="_blank">
-              Resume
-            </a>
-
-            <a style={styles.linkButton} href="mailto:your-email@example.com">
-              Email
-            </a>
-          </div>
-        </section>
+    <a
+      style={styles.linkButton}
+      href="mailto:rlatmdgus26@naver.com"
+    >
+      Email
+    </a>
+  </div>
+</section>
       </section>
     </main>
   );
