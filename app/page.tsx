@@ -753,7 +753,77 @@ export default function Page() {
             <p style={styles.notice}>개별 종목 데이터를 불러오는 중입니다.</p>
           )}
         </section>
+<section style={styles.backgroundSection}>
+  <div>
+    <p style={styles.subText}>Project Motivation</p>
+    <h2 style={styles.sectionTitle}>제작 배경</h2>
+    <p style={styles.aboutText}>
+      국내 증시는 미국 증시, 특히 NASDAQ과 기술주 흐름의 영향을 크게 받는다고 알려져 있습니다.
+      그러나 실제로 어느 시기에 두 시장이 함께 움직이고, 어느 구간에서 차이가 벌어지는지는
+      직관적으로 확인하기 어렵다고 느꼈습니다. 그래서 KOSPI와 NASDAQ, 주요 섹터별 한국·미국
+      테마주, 그리고 금리·환율 지표를 같은 기준으로 비교하는 웹 기반 분석 포트폴리오를
+      제작했습니다.
+    </p>
+  </div>
 
+  <div style={styles.backgroundGrid}>
+    <div style={styles.backgroundCard}>
+      <h3>문제의식</h3>
+      <p>
+        국내 시장을 볼 때 미국 증시, 환율, 금리 흐름을 함께 봐야 하지만 이를 한 화면에서
+        비교하기 어렵다고 느꼈습니다.
+      </p>
+    </div>
+
+    <div style={styles.backgroundCard}>
+      <h3>분석 방향</h3>
+      <p>
+        가격 단위가 다른 자산을 선택 기간 첫날 100으로 지수화해 상대적인 흐름을 비교했습니다.
+      </p>
+    </div>
+
+    <div style={styles.backgroundCard}>
+      <h3>활용 목적</h3>
+      <p>
+        금융시장 흐름을 단순히 보는 데서 그치지 않고, 고객에게 설명 가능한 형태로 정리하는
+        것을 목표로 했습니다.
+      </p>
+    </div>
+  </div>
+</section>
+
+<section style={styles.howToSection}>
+  <div>
+    <p style={styles.subText}>How to Read</p>
+    <h2 style={styles.sectionTitle}>사용 방법</h2>
+  </div>
+
+  <div style={styles.howToGrid}>
+    <div style={styles.howToCard}>
+      <p style={styles.stepNumber}>01</p>
+      <h3>기간 선택</h3>
+      <p>1개월, 3개월, 6개월, 1년, 전체 기간 중 하나를 선택해 분석 구간을 정합니다.</p>
+    </div>
+
+    <div style={styles.howToCard}>
+      <p style={styles.stepNumber}>02</p>
+      <h3>시장 비교</h3>
+      <p>KOSPI와 NASDAQ의 수익률과 상대 강도를 비교해 국내외 시장 흐름을 확인합니다.</p>
+    </div>
+
+    <div style={styles.howToCard}>
+      <p style={styles.stepNumber}>03</p>
+      <h3>금리·환율 확인</h3>
+      <p>원/달러 환율, 미국 10년물 금리, 달러인덱스를 주가지수와 함께 비교합니다.</p>
+    </div>
+
+    <div style={styles.howToCard}>
+      <p style={styles.stepNumber}>04</p>
+      <h3>섹터·종목 분석</h3>
+      <p>한국과 미국의 섹터별 테마주 및 대표 종목 흐름을 비교해 세부 차이를 확인합니다.</p>
+    </div>
+  </div>
+</section>
         <section style={styles.bankSection}>
           <div>
             <p style={styles.subText}>Banking Perspective</p>
@@ -873,6 +943,33 @@ export default function Page() {
               <h3>금융권 직무 연결</h3>
               <p>은행·증권·자산관리 직무에서 필요한 시장 설명력, 상품 이해력, 고객 커뮤니케이션 역량과 연결할 수 있습니다.</p>
             </div>
+          </div>
+        </section>
+                <section style={styles.linkSection}>
+          <div>
+            <p style={styles.subText}>Contact & Links</p>
+            <h2 style={styles.sectionTitle}>포트폴리오 링크</h2>
+            <p style={styles.aboutText}>
+              관련 활동, 코드 저장소, 블로그 기록을 함께 연결해 프로젝트의 확장성을 보여줄 수 있습니다.
+            </p>
+          </div>
+
+          <div style={styles.linkButtonGroup}>
+            <a style={styles.linkButton} href="#" target="_blank">
+              GitHub
+            </a>
+
+            <a style={styles.linkButton} href="#" target="_blank">
+              Blog
+            </a>
+
+            <a style={styles.linkButton} href="#" target="_blank">
+              Resume
+            </a>
+
+            <a style={styles.linkButton} href="mailto:your-email@example.com">
+              Email
+            </a>
           </div>
         </section>
       </section>
@@ -1165,5 +1262,85 @@ const styles: Record<string, React.CSSProperties> = {
     padding: 18,
     color: "#cbd5e1",
     lineHeight: 1.6
+  },
+
+  backgroundSection: {
+    border: "1px solid #1e293b",
+    background: "#0f172a",
+    borderRadius: 28,
+    padding: 32,
+    marginBottom: 24
+  },
+
+  backgroundGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gap: 14,
+    marginTop: 20
+  },
+
+  backgroundCard: {
+    background: "#1e293b",
+    borderRadius: 18,
+    padding: 18,
+    color: "#cbd5e1",
+    lineHeight: 1.6
+  },
+
+  howToSection: {
+    border: "1px solid #1e293b",
+    background: "#0f172a",
+    borderRadius: 28,
+    padding: 32,
+    marginBottom: 24
+  },
+
+  howToGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gap: 14,
+    marginTop: 20
+  },
+
+  howToCard: {
+    background: "#1e293b",
+    borderRadius: 18,
+    padding: 18,
+    color: "#cbd5e1",
+    lineHeight: 1.6
+  },
+
+  stepNumber: {
+    color: "#94a3b8",
+    fontSize: 13,
+    fontWeight: 700,
+    margin: "0 0 8px 0"
+  },
+
+  linkSection: {
+    border: "1px solid #1e293b",
+    background: "#0f172a",
+    borderRadius: 28,
+    padding: 32,
+    marginBottom: 24
+  },
+
+  linkButtonGroup: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 12,
+    marginTop: 20
+  },
+
+  linkButton: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    textDecoration: "none",
+    borderRadius: 16,
+    padding: "12px 18px",
+    background: "#ffffff",
+    color: "#020617",
+    fontWeight: 700
   }
 };
