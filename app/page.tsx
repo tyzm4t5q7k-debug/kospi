@@ -984,5 +984,66 @@ const styles: Record<string, React.CSSProperties> = {
     padding: 18,
     color: "#cbd5e1",
     lineHeight: 1.6
-  }
+  },
+  ,
+bankSection: {
+  border: "1px solid #1e293b",
+  background: "#0f172a",
+  borderRadius: 28,
+  padding: 32,
+  marginBottom: 24
+},
+bankGrid: {
+  display: "grid",
+  gridTemplateColumns: "repeat(4, 1fr)",
+  gap: 14,
+  marginTop: 20
+},
+bankCard: {
+  background: "#1e293b",
+  borderRadius: 18,
+  padding: 18,
+  color: "#cbd5e1",
+  lineHeight: 1.6
+},
+productSection: {
+  border: "1px solid #1e293b",
+  background: "#0f172a",
+  borderRadius: 28,
+  padding: 32,
+  marginBottom: 24
+},
+productGrid: {
+  display: "grid",
+  gridTemplateColumns: "repeat(4, 1fr)",
+  gap: 14,
+  marginTop: 20
+},
+productCard: {
+  background: "#1e293b",
+  borderRadius: 18,
+  padding: 18,
+  color: "#cbd5e1",
+  lineHeight: 1.6
+},
+productLabel: {
+  color: "#94a3b8",
+  fontSize: 13,
+  margin: "0 0 8px 0"
+},
+riskSection: {
+  border: "1px solid #334155",
+  background: "#111827",
+  borderRadius: 28,
+  padding: 32,
+  marginBottom: 24
+},
+riskBox: {
+  background: "#1e293b",
+  borderRadius: 18,
+  padding: 20,
+  color: "#cbd5e1",
+  lineHeight: 1.8,
+  marginTop: 16
+}
 };
