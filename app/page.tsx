@@ -608,6 +608,114 @@ const usStockReturn = useMemo(() => {
     <p style={styles.notice}>개별 종목 데이터를 불러오는 중입니다.</p>
   )}
 </section>
+        <section style={styles.bankSection}>
+  <div>
+    <p style={styles.subText}>Banking Perspective</p>
+    <h2 style={styles.sectionTitle}>은행권 관점에서의 활용</h2>
+    <p style={styles.aboutText}>
+      이 프로젝트는 단순히 주가 흐름을 보여주는 데 그치지 않고, 시장 데이터를 고객에게
+      설명할 수 있는 형태로 정리하는 데 목적이 있습니다. 은행권에서는 투자 성과 자체보다
+      고객의 투자성향, 투자기간, 위험수용도를 고려해 시장 흐름을 쉽게 설명하는 역량이
+      중요하다고 생각했습니다.
+    </p>
+  </div>
+
+  <div style={styles.bankGrid}>
+    <div style={styles.bankCard}>
+      <h3>고객 상담</h3>
+      <p>
+        복잡한 시장 흐름을 KOSPI, NASDAQ, 섹터별 테마주 비교로 단순화해 설명할 수 있습니다.
+      </p>
+    </div>
+
+    <div style={styles.bankCard}>
+      <h3>자산관리</h3>
+      <p>
+        국내외 시장의 상대 흐름을 바탕으로 분산투자와 장기투자 관점을 설명할 수 있습니다.
+      </p>
+    </div>
+
+    <div style={styles.bankCard}>
+      <h3>리스크 인식</h3>
+      <p>
+        수익률뿐 아니라 변동성, 상관관계, 시장 간 차이를 함께 보며 위험 요인을 고려합니다.
+      </p>
+    </div>
+
+    <div style={styles.bankCard}>
+      <h3>상품 이해</h3>
+      <p>
+        예금, 펀드, ETF, ISA, 연금저축 등 금융상품과 시장 흐름을 연결해 설명할 수 있습니다.
+      </p>
+    </div>
+  </div>
+</section>
+
+<section style={styles.productSection}>
+  <div>
+    <p style={styles.subText}>Financial Product Linkage</p>
+    <h2 style={styles.sectionTitle}>시장 흐름과 금융상품 연결</h2>
+  </div>
+
+  <div style={styles.productGrid}>
+    <div style={styles.productCard}>
+      <p style={styles.productLabel}>안정성 중심</p>
+      <h3>예금 · 적금</h3>
+      <p>
+        금리 상승기나 시장 변동성이 큰 구간에서는 안정적인 현금흐름과 원금 보전을 중시하는
+        고객에게 설명하기 적합합니다.
+      </p>
+    </div>
+
+    <div style={styles.productCard}>
+      <p style={styles.productLabel}>분산투자</p>
+      <h3>펀드 · ETF</h3>
+      <p>
+        KOSPI와 NASDAQ, 섹터별 테마 흐름을 비교해 국내외 자산을 나누어 투자하는 관점을
+        설명할 수 있습니다.
+      </p>
+    </div>
+
+    <div style={styles.productCard}>
+      <p style={styles.productLabel}>절세 관점</p>
+      <h3>ISA</h3>
+      <p>
+        투자 성향이 있는 고객에게 시장 흐름과 절세 계좌 활용을 함께 안내하는 방식으로
+        연결할 수 있습니다.
+      </p>
+    </div>
+
+    <div style={styles.productCard}>
+      <p style={styles.productLabel}>장기 자산관리</p>
+      <h3>연금저축 · IRP</h3>
+      <p>
+        단기 시장 변동보다 장기 복리와 분산투자를 중시하는 고객에게 장기 자산관리 관점으로
+        설명할 수 있습니다.
+      </p>
+    </div>
+  </div>
+</section>
+
+<section style={styles.riskSection}>
+  <div>
+    <p style={styles.subText}>Risk Notice</p>
+    <h2 style={styles.sectionTitle}>리스크 및 유의사항</h2>
+  </div>
+
+  <div style={styles.riskBox}>
+    <p>
+      본 프로젝트는 투자 권유가 아니라 국내외 시장 흐름을 비교하기 위한 개인 분석
+      포트폴리오입니다. 주식형 상품과 투자성 금융상품은 원금손실 가능성이 있으며,
+      과거 수익률이 미래 수익률을 보장하지 않습니다.
+    </p>
+
+    <p>
+      Yahoo Finance 데이터를 기준으로 하므로 일부 데이터는 지연되거나 누락될 수 있습니다.
+      또한 상관관계는 인과관계를 의미하지 않으며, 실제 금융상품 선택 시에는 고객의
+      투자성향, 투자기간, 유동성 필요성, 위험수용도를 함께 고려해야 합니다.
+    </p>
+  </div>
+</section>
         <section style={styles.aboutSection}>
           <div>
             <p style={styles.subText}>About This Project</p>
