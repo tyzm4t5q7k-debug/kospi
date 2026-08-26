@@ -1315,6 +1315,33 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#cbd5e1",
     lineHeight: 1.6
   },
+  ,
+customerSection: {
+  border: "1px solid #1e293b",
+  background: "#0f172a",
+  borderRadius: 28,
+  padding: 32,
+  marginBottom: 24
+},
+customerGrid: {
+  display: "grid",
+  gridTemplateColumns: "repeat(4, 1fr)",
+  gap: 14,
+  marginTop: 20
+},
+customerCard: {
+  background: "#1e293b",
+  borderRadius: 18,
+  padding: 18,
+  color: "#cbd5e1",
+  lineHeight: 1.6
+},
+customerLabel: {
+  color: "#94a3b8",
+  fontSize: 13,
+  margin: "0 0 8px 0",
+  fontWeight: 700
+}
 
   backgroundSection: {
     border: "1px solid #1e293b",
