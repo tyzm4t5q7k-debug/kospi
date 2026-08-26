@@ -1315,7 +1315,6 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#cbd5e1",
     lineHeight: 1.6
   },
-  ,
 customerSection: {
   border: "1px solid #1e293b",
   background: "#0f172a",
