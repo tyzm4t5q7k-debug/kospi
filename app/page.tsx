@@ -1030,12 +1030,12 @@ export default function Page() {
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  page: {
-    minHeight: "100vh",
-    background: "#020617",
-    color: "#f8fafc",
-    fontFamily: "Arial, sans-serif"
-  },
+ page: {
+  minHeight: "100vh",
+  background: "linear-gradient(180deg, #0f172a 0%, #111827 45%, #1e293b 100%)",
+  color: "#f8fafc",
+  fontFamily: "Arial, sans-serif"
+},
   container: {
     maxWidth: 1200,
     margin: "0 auto",
