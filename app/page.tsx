@@ -1039,18 +1039,19 @@ const styles: Record<string, React.CSSProperties> = {
   container: {
     maxWidth: 1200,
     margin: "0 auto",
-    padding: 32
+    padding: "clamp(16px, 4vw, 32px)"
   },
   nav: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
     gap: 16,
-    marginBottom: 32
+    marginBottom: 32,
+    flexWrap: "wrap"
   },
   title: {
     margin: 0,
-    fontSize: 28
+    fontSize: "clamp(24px, 5vw, 28px)"
   },
   subText: {
     color: "#94a3b8",
@@ -1075,7 +1076,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   hero: {
     display: "grid",
-    gridTemplateColumns: "1.4fr 0.6fr",
+    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
     gap: 24,
     marginBottom: 24
   },
@@ -1083,7 +1084,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid #1e293b",
     background: "#0f172a",
     borderRadius: 28,
-    padding: 32
+    padding: "clamp(22px, 4vw, 32px)"
   },
   heroSide: {
     display: "grid",
@@ -1098,14 +1099,14 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: 16
   },
   heroTitle: {
-    fontSize: 44,
+    fontSize: "clamp(32px, 7vw, 44px)",
     lineHeight: 1.15,
     margin: "0 0 16px 0"
   },
   description: {
     color: "#cbd5e1",
     lineHeight: 1.7,
-    fontSize: 17
+    fontSize: "clamp(15px, 3.6vw, 17px)"
   },
   periodBox: {
     display: "flex",
@@ -1115,7 +1116,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   stats: {
     display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
     gap: 12,
     marginTop: 20,
     marginBottom: 20
@@ -1141,7 +1142,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   insightSection: {
     display: "grid",
-    gridTemplateColumns: "repeat(2, 1fr)",
+    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
     gap: 16,
     marginBottom: 24
   },
@@ -1149,28 +1150,28 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid #1e293b",
     background: "#0f172a",
     borderRadius: 28,
-    padding: 28,
+    padding: "clamp(20px, 4vw, 28px)",
     marginBottom: 16
   },
   insightTitle: {
-    fontSize: 22,
+    fontSize: "clamp(20px, 4vw, 22px)",
     margin: "8px 0 12px 0"
   },
   insightText: {
     color: "#cbd5e1",
     lineHeight: 1.8,
-    fontSize: 16
+    fontSize: "clamp(15px, 3.6vw, 16px)"
   },
   summarySection: {
     border: "1px solid #1e293b",
     background: "#0f172a",
     borderRadius: 28,
-    padding: 28,
+    padding: "clamp(22px, 4vw, 28px)",
     marginBottom: 24
   },
   summaryGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(4, 1fr)",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
     gap: 14,
     marginTop: 20
   },
@@ -1185,15 +1186,17 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid #1e293b",
     background: "#0f172a",
     borderRadius: 28,
-    padding: 28,
-    marginBottom: 24
+    padding: "clamp(20px, 4vw, 28px)",
+    marginBottom: 24,
+    overflowX: "auto"
   },
   chartHeader: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
     gap: 16,
-    marginBottom: 24
+    marginBottom: 24,
+    flexWrap: "wrap"
   },
   buttonGroup: {
     display: "flex",
@@ -1218,18 +1221,19 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 700
   },
   chartBox: {
-    height: 360
+    height: 360,
+    minWidth: 720
   },
   bankSection: {
     border: "1px solid #1e293b",
     background: "#0f172a",
     borderRadius: 28,
-    padding: 32,
+    padding: "clamp(22px, 4vw, 32px)",
     marginBottom: 24
   },
   bankGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(4, 1fr)",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
     gap: 14,
     marginTop: 20
   },
@@ -1244,12 +1248,12 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid #1e293b",
     background: "#0f172a",
     borderRadius: 28,
-    padding: 32,
+    padding: "clamp(22px, 4vw, 32px)",
     marginBottom: 24
   },
   productGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(4, 1fr)",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
     gap: 14,
     marginTop: 20
   },
@@ -1269,7 +1273,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid #334155",
     background: "#111827",
     borderRadius: 28,
-    padding: 32,
+    padding: "clamp(22px, 4vw, 32px)",
     marginBottom: 24
   },
   riskBox: {
@@ -1284,11 +1288,11 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid #1e293b",
     background: "#0f172a",
     borderRadius: 28,
-    padding: 32,
+    padding: "clamp(22px, 4vw, 32px)",
     marginBottom: 24
   },
   sectionTitle: {
-    fontSize: 28,
+    fontSize: "clamp(24px, 5vw, 28px)",
     margin: "8px 0 8px 0"
   },
   profileLine: {
@@ -1300,11 +1304,11 @@ const styles: Record<string, React.CSSProperties> = {
   aboutText: {
     color: "#cbd5e1",
     lineHeight: 1.8,
-    fontSize: 16
+    fontSize: "clamp(15px, 3.6vw, 16px)"
   },
   aboutGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
     gap: 14,
     marginTop: 20
   },
@@ -1315,48 +1319,45 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#cbd5e1",
     lineHeight: 1.6
   },
-customerSection: {
-  border: "1px solid #1e293b",
-  background: "#0f172a",
-  borderRadius: 28,
-  padding: 32,
-  marginBottom: 24
-},
-customerGrid: {
-  display: "grid",
-  gridTemplateColumns: "repeat(4, 1fr)",
-  gap: 14,
-  marginTop: 20
-},
-customerCard: {
-  background: "#1e293b",
-  borderRadius: 18,
-  padding: 18,
-  color: "#cbd5e1",
-  lineHeight: 1.6
-},
-customerLabel: {
-  color: "#94a3b8",
-  fontSize: 13,
-  margin: "0 0 8px 0",
-  fontWeight: 700
-},
-
+  customerSection: {
+    border: "1px solid #1e293b",
+    background: "#0f172a",
+    borderRadius: 28,
+    padding: "clamp(22px, 4vw, 32px)",
+    marginBottom: 24
+  },
+  customerGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gap: 14,
+    marginTop: 20
+  },
+  customerCard: {
+    background: "#1e293b",
+    borderRadius: 18,
+    padding: 18,
+    color: "#cbd5e1",
+    lineHeight: 1.6
+  },
+  customerLabel: {
+    color: "#94a3b8",
+    fontSize: 13,
+    margin: "0 0 8px 0",
+    fontWeight: 700
+  },
   backgroundSection: {
     border: "1px solid #1e293b",
     background: "#0f172a",
     borderRadius: 28,
-    padding: 32,
+    padding: "clamp(22px, 4vw, 32px)",
     marginBottom: 24
   },
-
   backgroundGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
     gap: 14,
     marginTop: 20
   },
-
   backgroundCard: {
     background: "#1e293b",
     borderRadius: 18,
@@ -1364,22 +1365,19 @@ customerLabel: {
     color: "#cbd5e1",
     lineHeight: 1.6
   },
-
   howToSection: {
     border: "1px solid #1e293b",
     background: "#0f172a",
     borderRadius: 28,
-    padding: 32,
+    padding: "clamp(22px, 4vw, 32px)",
     marginBottom: 24
   },
-
   howToGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
     gap: 14,
     marginTop: 20
   },
-
   howToCard: {
     background: "#1e293b",
     borderRadius: 18,
@@ -1387,29 +1385,25 @@ customerLabel: {
     color: "#cbd5e1",
     lineHeight: 1.6
   },
-
   stepNumber: {
     color: "#94a3b8",
     fontSize: 13,
     fontWeight: 700,
     margin: "0 0 8px 0"
   },
-
   linkSection: {
     border: "1px solid #1e293b",
     background: "#0f172a",
     borderRadius: 28,
-    padding: 32,
+    padding: "clamp(22px, 4vw, 32px)",
     marginBottom: 24
   },
-
   linkButtonGroup: {
     display: "flex",
     flexWrap: "wrap",
     gap: 12,
     marginTop: 20
   },
-
   linkButton: {
     display: "inline-flex",
     alignItems: "center",
