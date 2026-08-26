@@ -1340,7 +1340,7 @@ customerLabel: {
   fontSize: 13,
   margin: "0 0 8px 0",
   fontWeight: 700
-}
+},
 
   backgroundSection: {
     border: "1px solid #1e293b",
