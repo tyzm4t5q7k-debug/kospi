@@ -1054,7 +1054,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "clamp(24px, 5vw, 28px)"
   },
   subText: {
-    color: "#a8b7cf",
+    color: "#b6c5dd",
     margin: 0,
     fontSize: 14
   },
@@ -1081,8 +1081,8 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: 24
   },
   heroMain: {
-    border: "1px solid #334155",
-    background: "#162033",
+    border: "1px solid #3b4a63",
+    background: "#1b2940",
     borderRadius: 28,
     padding: "clamp(22px, 4vw, 32px)"
   },
@@ -1093,7 +1093,7 @@ const styles: Record<string, React.CSSProperties> = {
   badge: {
     display: "inline-block",
     padding: "8px 12px",
-    border: "1px solid #475569",
+    border: "1px solid #536179",
     borderRadius: 999,
     color: "#dbeafe",
     marginBottom: 16
@@ -1122,22 +1122,22 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: 20
   },
   statBox: {
-    background: "#263449",
+    background: "#2b3a52",
     borderRadius: 18,
     padding: 16
   },
   card: {
-    border: "1px solid #334155",
-    background: "#162033",
+    border: "1px solid #3b4a63",
+    background: "#1b2940",
     borderRadius: 24,
     padding: 24
   },
   cardText: {
-    color: "#a8b7cf",
+    color: "#b6c5dd",
     lineHeight: 1.6
   },
   notice: {
-    color: "#a8b7cf",
+    color: "#b6c5dd",
     marginTop: 12
   },
   insightSection: {
@@ -1147,8 +1147,8 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: 24
   },
   insightCard: {
-    border: "1px solid #334155",
-    background: "#162033",
+    border: "1px solid #3b4a63",
+    background: "#1b2940",
     borderRadius: 28,
     padding: "clamp(20px, 4vw, 28px)",
     marginBottom: 16
@@ -1163,8 +1163,8 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "clamp(15px, 3.6vw, 16px)"
   },
   summarySection: {
-    border: "1px solid #334155",
-    background: "#162033",
+    border: "1px solid #3b4a63",
+    background: "#1b2940",
     borderRadius: 28,
     padding: "clamp(22px, 4vw, 28px)",
     marginBottom: 24
@@ -1176,15 +1176,15 @@ const styles: Record<string, React.CSSProperties> = {
     marginTop: 20
   },
   summaryCard: {
-    background: "#263449",
+    background: "#2b3a52",
     borderRadius: 18,
     padding: 18,
     color: "#dbeafe",
     lineHeight: 1.6
   },
   chartCard: {
-    border: "1px solid #334155",
-    background: "#162033",
+    border: "1px solid #3b4a63",
+    background: "#1b2940",
     borderRadius: 28,
     padding: "clamp(20px, 4vw, 28px)",
     marginBottom: 24,
@@ -1208,7 +1208,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: 0,
     borderRadius: 14,
     padding: "10px 14px",
-    background: "#263449",
+    background: "#2b3a52",
     color: "#e2e8f0",
     fontWeight: 700
   },
@@ -1225,8 +1225,8 @@ const styles: Record<string, React.CSSProperties> = {
     minWidth: 720
   },
   bankSection: {
-    border: "1px solid #334155",
-    background: "#162033",
+    border: "1px solid #3b4a63",
+    background: "#1b2940",
     borderRadius: 28,
     padding: "clamp(22px, 4vw, 32px)",
     marginBottom: 24
@@ -1238,15 +1238,15 @@ const styles: Record<string, React.CSSProperties> = {
     marginTop: 20
   },
   bankCard: {
-    background: "#263449",
+    background: "#2b3a52",
     borderRadius: 18,
     padding: 18,
     color: "#dbeafe",
     lineHeight: 1.6
   },
   productSection: {
-    border: "1px solid #334155",
-    background: "#162033",
+    border: "1px solid #3b4a63",
+    background: "#1b2940",
     borderRadius: 28,
     padding: "clamp(22px, 4vw, 32px)",
     marginBottom: 24
@@ -1258,26 +1258,26 @@ const styles: Record<string, React.CSSProperties> = {
     marginTop: 20
   },
   productCard: {
-    background: "#263449",
+    background: "#2b3a52",
     borderRadius: 18,
     padding: 18,
     color: "#dbeafe",
     lineHeight: 1.6
   },
   productLabel: {
-    color: "#a8b7cf",
+    color: "#b6c5dd",
     fontSize: 13,
     margin: "0 0 8px 0"
   },
   riskSection: {
-    border: "1px solid #475569",
-    background: "#182235",
+    border: "1px solid #536179",
+    background: "#1d2b42",
     borderRadius: 28,
     padding: "clamp(22px, 4vw, 32px)",
     marginBottom: 24
   },
   riskBox: {
-    background: "#263449",
+    background: "#2b3a52",
     borderRadius: 18,
     padding: 20,
     color: "#dbeafe",
@@ -1285,8 +1285,8 @@ const styles: Record<string, React.CSSProperties> = {
     marginTop: 16
   },
   aboutSection: {
-    border: "1px solid #334155",
-    background: "#162033",
+    border: "1px solid #3b4a63",
+    background: "#1b2940",
     borderRadius: 28,
     padding: "clamp(22px, 4vw, 32px)",
     marginBottom: 24
@@ -1313,15 +1313,15 @@ const styles: Record<string, React.CSSProperties> = {
     marginTop: 20
   },
   aboutCard: {
-    background: "#263449",
+    background: "#2b3a52",
     borderRadius: 18,
     padding: 18,
     color: "#dbeafe",
     lineHeight: 1.6
   },
   customerSection: {
-    border: "1px solid #334155",
-    background: "#162033",
+    border: "1px solid #3b4a63",
+    background: "#1b2940",
     borderRadius: 28,
     padding: "clamp(22px, 4vw, 32px)",
     marginBottom: 24
@@ -1333,21 +1333,21 @@ const styles: Record<string, React.CSSProperties> = {
     marginTop: 20
   },
   customerCard: {
-    background: "#263449",
+    background: "#2b3a52",
     borderRadius: 18,
     padding: 18,
     color: "#dbeafe",
     lineHeight: 1.6
   },
   customerLabel: {
-    color: "#a8b7cf",
+    color: "#b6c5dd",
     fontSize: 13,
     margin: "0 0 8px 0",
     fontWeight: 700
   },
   backgroundSection: {
-    border: "1px solid #334155",
-    background: "#162033",
+    border: "1px solid #3b4a63",
+    background: "#1b2940",
     borderRadius: 28,
     padding: "clamp(22px, 4vw, 32px)",
     marginBottom: 24
@@ -1359,15 +1359,15 @@ const styles: Record<string, React.CSSProperties> = {
     marginTop: 20
   },
   backgroundCard: {
-    background: "#263449",
+    background: "#2b3a52",
     borderRadius: 18,
     padding: 18,
     color: "#dbeafe",
     lineHeight: 1.6
   },
   howToSection: {
-    border: "1px solid #334155",
-    background: "#162033",
+    border: "1px solid #3b4a63",
+    background: "#1b2940",
     borderRadius: 28,
     padding: "clamp(22px, 4vw, 32px)",
     marginBottom: 24
@@ -1379,21 +1379,21 @@ const styles: Record<string, React.CSSProperties> = {
     marginTop: 20
   },
   howToCard: {
-    background: "#263449",
+    background: "#2b3a52",
     borderRadius: 18,
     padding: 18,
     color: "#dbeafe",
     lineHeight: 1.6
   },
   stepNumber: {
-    color: "#a8b7cf",
+    color: "#b6c5dd",
     fontSize: 13,
     fontWeight: 700,
     margin: "0 0 8px 0"
   },
   linkSection: {
-    border: "1px solid #334155",
-    background: "#162033",
+    border: "1px solid #3b4a63",
+    background: "#1b2940",
     borderRadius: 28,
     padding: "clamp(22px, 4vw, 32px)",
     marginBottom: 24
