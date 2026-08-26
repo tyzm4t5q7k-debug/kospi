@@ -824,6 +824,59 @@ export default function Page() {
     </div>
   </div>
 </section>
+        <section style={styles.customerSection}>
+  <div>
+    <p style={styles.subText}>Customer Explanation</p>
+    <h2 style={styles.sectionTitle}>고객 설명용 요약</h2>
+    <p style={styles.aboutText}>
+      같은 시장 데이터라도 고객의 투자성향에 따라 설명 방식은 달라져야 합니다.
+      이 섹션은 KOSPI·NASDAQ·금리·환율 흐름을 은행 상담 상황에서 어떻게 쉽게
+      설명할 수 있는지 정리한 예시입니다.
+    </p>
+  </div>
+
+  <div style={styles.customerGrid}>
+    <div style={styles.customerCard}>
+      <p style={styles.customerLabel}>보수형 고객</p>
+      <h3>안정성과 원금 보전 중심</h3>
+      <p>
+        시장 변동성이 커지는 구간에서는 예금·적금, 단기 채권형 상품, 현금성 자산의
+        비중을 우선적으로 설명할 수 있습니다. 투자형 상품은 원금손실 가능성을 충분히
+        안내한 뒤 소액·분산 접근을 제안하는 방식이 적절합니다.
+      </p>
+    </div>
+
+    <div style={styles.customerCard}>
+      <p style={styles.customerLabel}>중립형 고객</p>
+      <h3>분산투자와 적립식 접근</h3>
+      <p>
+        KOSPI와 NASDAQ의 흐름이 엇갈리는 구간에서는 한 시장에 집중하기보다 국내외
+        자산을 나누어 투자하는 관점을 설명할 수 있습니다. 변동성을 줄이기 위해
+        적립식 펀드나 ETF를 활용하는 방식도 함께 안내할 수 있습니다.
+      </p>
+    </div>
+
+    <div style={styles.customerCard}>
+      <p style={styles.customerLabel}>적극형 고객</p>
+      <h3>섹터·글로벌 테마 활용</h3>
+      <p>
+        반도체, AI, 조선, 전력기기처럼 특정 섹터의 상대 강도가 뚜렷한 경우에는
+        관련 펀드나 ETF를 관심 상품으로 연결할 수 있습니다. 다만 테마형 상품은
+        변동성이 크기 때문에 투자기간과 손실 감내 수준을 함께 확인해야 합니다.
+      </p>
+    </div>
+
+    <div style={styles.customerCard}>
+      <p style={styles.customerLabel}>상담 유의사항</p>
+      <h3>설명 의무와 적합성 원칙</h3>
+      <p>
+        과거 수익률과 상관관계만으로 상품을 권유해서는 안 됩니다. 고객의 투자목적,
+        투자기간, 소득 안정성, 유동성 필요성, 위험수용도를 확인한 뒤 적합한 상품을
+        설명해야 합니다.
+      </p>
+    </div>
+  </div>
+</section>
         <section style={styles.bankSection}>
           <div>
             <p style={styles.subText}>Banking Perspective</p>
