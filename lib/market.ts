@@ -1,7 +1,4 @@
-type IndexedPoint = {
-  month: string;
-  value: number;
-};
+import { alignSeries, equalWeightBasket, positive, returnCorrelation, type Point } from "./analytics";
 
 const sectors = {
   semiconductor: {
@@ -133,225 +130,125 @@ const macroIndicators = {
     label: "원/달러 환율",
     name: "USD/KRW",
     ticker: "KRW=X",
+    unit: "원/USD",
     description: "원화 대비 달러 가치 흐름을 보여주는 환율 지표입니다."
   },
   us10y: {
     label: "미국 10년물 국채금리",
     name: "U.S. 10Y Treasury Yield",
     ticker: "^TNX",
+    unit: "%",
     description: "미국 장기금리 흐름을 보여주는 대표 금리 지표입니다."
   },
   dxy: {
     label: "달러인덱스",
     name: "Dollar Index",
     ticker: "DX-Y.NYB",
+    unit: "pt",
     description: "달러의 전반적인 강세·약세 흐름을 보여주는 지표입니다."
   }
 };
 
-function unix(date: string) {
-  return Math.floor(new Date(date).getTime() / 1000);
-}
+type QuoteSeries = { data: Point[]; basis: "adjusted" | "close" };
 
-function dateFromUnix(timestamp: number) {
-  return new Date(timestamp * 1000).toISOString().slice(0, 10);
-}
-
-async function fetchYahooChart(symbol: string): Promise<IndexedPoint[]> {
-  const period1 = unix("2024-01-01");
+async function fetchYahooChart(symbol: string): Promise<QuoteSeries> {
+  const period1 = Math.floor(Date.parse("2024-01-01T00:00:00Z") / 1000);
   const period2 = Math.floor(Date.now() / 1000);
-
-  const url =
-    `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}` +
-    `?period1=${period1}&period2=${period2}&interval=1d&events=history&includeAdjustedClose=true`;
-
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?period1=${period1}&period2=${period2}&interval=1d&events=history&includeAdjustedClose=true`;
   const res = await fetch(url, {
-    headers: {
-      "User-Agent": "Mozilla/5.0",
-      Accept: "application/json"
-    },
-    cache: "no-store"
+    headers: { "User-Agent": "Mozilla/5.0", Accept: "application/json" },
+    cache: "no-store",
+    signal: AbortSignal.timeout(6000)
   });
-
-  if (!res.ok) {
-    throw new Error(`Yahoo Finance request failed: ${symbol} ${res.status}`);
-  }
-
+  if (!res.ok) throw new Error(`Market source unavailable: ${symbol}`);
   const json = await res.json();
   const result = json?.chart?.result?.[0];
-
-  if (!result) {
-    throw new Error(`No Yahoo Finance result: ${symbol}`);
-  }
-
+  if (!result || json.chart.error) throw new Error(`Missing series: ${symbol}`);
+  const timezone = result.meta?.exchangeTimezoneName || "UTC";
+  const localDate = (timestamp: number) => new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit"
+  }).format(new Date(timestamp));
+  const today = localDate(Date.now());
   const timestamps: number[] = result.timestamp || [];
-  const quote = result.indicators?.quote?.[0];
-  const adjClose = result.indicators?.adjclose?.[0]?.adjclose || [];
-  const close = quote?.close || [];
-
-  const raw = timestamps
-    .map((time, index) => ({
-      month: dateFromUnix(time),
-      price: adjClose[index] ?? close[index]
-    }))
-    .filter((p) => typeof p.price === "number" && Number.isFinite(p.price));
-
-  const base = raw[0]?.price;
-
-  if (!base) {
-    throw new Error(`No valid price data: ${symbol}`);
-  }
-
-  return raw.map((p) => ({
-    month: p.month,
-    value: Number(((p.price / base) * 100).toFixed(2))
-  }));
+  const close: (number | null)[] = result.indicators?.quote?.[0]?.close || [];
+  const adjusted: (number | null)[] = result.indicators?.adjclose?.[0]?.adjclose || [];
+  // Do not mix adjusted and unadjusted prices inside a time series.
+  const useAdjusted = adjusted.filter(positive).length >= 2;
+  const prices = useAdjusted ? adjusted : close;
+  const unique = new Map<string, number>();
+  timestamps.forEach((timestamp, index) => {
+    const month = localDate(timestamp * 1000);
+    const value = prices[index];
+    // Conservatively exclude the current exchange-local day (possibly still trading).
+    if (month < today && positive(value)) unique.set(month, value);
+  });
+  const data = [...unique].sort(([a], [b]) => a.localeCompare(b)).map(([month, value]) => ({ month, value }));
+  if (data.length < 2) throw new Error(`Insufficient completed observations: ${symbol}`);
+  return { data, basis: useAdjusted ? "adjusted" : "close" };
 }
 
-async function safeFetch(symbol: string) {
-  try {
-    return await fetchYahooChart(symbol);
-  } catch (error) {
-    console.error(symbol, error);
-    return [];
-  }
-}
-
-async function fetchBasket(symbols: string[]) {
-  const allSeries = await Promise.all(symbols.map((symbol) => safeFetch(symbol)));
-
-  const map = new Map<string, number[]>();
-
-  for (const series of allSeries) {
-    for (const point of series) {
-      if (!map.has(point.month)) {
-        map.set(point.month, []);
-      }
-
-      map.get(point.month)?.push(point.value);
+async function collectMarketData() {
+  const symbols = [...new Set([
+    "^KS11", "^IXIC",
+    ...Object.values(sectors).flatMap((s) => [...s.korea, ...s.us]),
+    ...Object.values(stockPairs).flatMap((s) => [s.korea, s.us]),
+    ...Object.values(macroIndicators).map((s) => s.ticker)
+  ])];
+  const results = new Map<string, QuoteSeries>();
+  const failedSymbols: string[] = [];
+  let next = 0;
+  // Fetch a ticker once per refresh; keep concurrency below the provider's burst limit.
+  await Promise.all(Array.from({ length: Math.min(8, symbols.length) }, async () => {
+    while (next < symbols.length) {
+      const symbol = symbols[next++];
+      try { results.set(symbol, await fetchYahooChart(symbol)); }
+      catch { failedSymbols.push(symbol); }
     }
-  }
-
-  return Array.from(map.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([month, values]) => ({
-      month,
-      value: Number(
-        (values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(2)
-      )
-    }));
-}
-
-function mergeSeries(a: IndexedPoint[], b: IndexedPoint[], aKey: string, bKey: string) {
-  const bMap = new Map(b.map((p) => [p.month, p.value]));
-
-  return a
-    .filter((p) => bMap.has(p.month))
-    .map((p) => ({
-      month: p.month,
-      [aKey]: p.value,
-      [bKey]: bMap.get(p.month),
-      spread: Number((p.value - Number(bMap.get(p.month))).toFixed(2))
-    }));
-}
-
-function correlation(x: number[], y: number[]) {
-  if (x.length !== y.length || x.length < 2) return null;
-
-  const xMean = x.reduce((a, b) => a + b, 0) / x.length;
-  const yMean = y.reduce((a, b) => a + b, 0) / y.length;
-
-  let numerator = 0;
-  let xDenominator = 0;
-  let yDenominator = 0;
-
-  for (let i = 0; i < x.length; i++) {
-    const xd = x[i] - xMean;
-    const yd = y[i] - yMean;
-
-    numerator += xd * yd;
-    xDenominator += xd * xd;
-    yDenominator += yd * yd;
-  }
-
-  const denominator = Math.sqrt(xDenominator * yDenominator);
-
-  if (!denominator) return null;
-
-  return Number((numerator / denominator).toFixed(3));
-}
-
-export async function getMarketData() {
-  const kospi = await fetchYahooChart("^KS11");
-  const nasdaq = await fetchYahooChart("^IXIC");
-
-  const indexData = mergeSeries(kospi, nasdaq, "kospi", "nasdaq");
-
-  const sectorData: any = {};
-
-  for (const [key, sector] of Object.entries(sectors)) {
-    const korea = await fetchBasket(sector.korea);
-    const us = await fetchBasket(sector.us);
-    const data = mergeSeries(korea, us, "korea", "us");
-
-    sectorData[key] = {
-      key,
-      label: sector.label,
-      koreaName: sector.koreaName,
-      usName: sector.usName,
-      data,
-      correlation: correlation(
-        data.map((d: any) => d.korea),
-        data.map((d: any) => d.us)
-      )
-    };
-  }
-
-  const stockPairData: any = {};
-
-  for (const [key, pair] of Object.entries(stockPairs)) {
-    const korea = await safeFetch(pair.korea);
-    const us = await safeFetch(pair.us);
-    const data = mergeSeries(korea, us, "korea", "us");
-
-    stockPairData[key] = {
-      key,
-      label: pair.label,
-      koreaName: pair.koreaName,
-      usName: pair.usName,
-      data,
-      correlation: correlation(
-        data.map((d: any) => d.korea),
-        data.map((d: any) => d.us)
-      )
-    };
-  }
-
-  const macroIndicatorData: any = {};
-
-  for (const [key, indicator] of Object.entries(macroIndicators)) {
-    const data = await safeFetch(indicator.ticker);
-
-    macroIndicatorData[key] = {
-      key,
-      label: indicator.label,
-      name: indicator.name,
-      ticker: indicator.ticker,
-      description: indicator.description,
-      data
-    };
-  }
-
+  }));
+  const series = (symbol: string) => results.get(symbol)?.data || [];
+  const indexData = alignSeries(series("^KS11"), series("^IXIC"), "kospi", "nasdaq");
+  if (indexData.length < 3) throw new Error("주요 지수의 공통 거래일 데이터를 확보하지 못했습니다.");
+  const sectorData = Object.fromEntries(Object.entries(sectors).map(([key, sector]) => {
+    const missingSymbols = [...sector.korea, ...sector.us].filter((symbol) => !results.has(symbol));
+    const korea = equalWeightBasket(sector.korea.map(series));
+    const us = equalWeightBasket(sector.us.map(series));
+    const data = alignSeries(korea, us, "korea", "us");
+    return [key, { key, label: sector.label, koreaName: sector.koreaName, usName: sector.usName,
+      data, missingSymbols, correlation: returnCorrelation(data, "korea", "us") }];
+  }));
+  const stockPairData = Object.fromEntries(Object.entries(stockPairs).map(([key, pair]) => {
+    const data = alignSeries(series(pair.korea), series(pair.us), "korea", "us");
+    return [key, { key, label: pair.label, koreaName: pair.koreaName, usName: pair.usName,
+      data, correlation: returnCorrelation(data, "korea", "us") }];
+  }));
+  const macroIndicatorData = Object.fromEntries(Object.entries(macroIndicators).map(([key, indicator]) =>
+    [key, { key, ...indicator, data: series(indicator.ticker) }]
+  ));
   return {
     updatedAt: new Date().toISOString(),
-    source: "Yahoo Finance Chart API - Daily Data",
-    indexData,
-    indexCorrelation: correlation(
-      indexData.map((d: any) => d.kospi),
-      indexData.map((d: any) => d.nasdaq)
-    ),
-    sectors: sectorData,
-    stockPairs: stockPairData,
-    macroIndicators: macroIndicatorData
+    source: "Yahoo Finance Chart API · 완료된 일별 관측치",
+    dataDate: indexData[indexData.length - 1].month,
+    failedSymbols: failedSymbols.sort(),
+    closeOnlySymbols: [...results].filter(([, result]) => result.basis === "close").map(([symbol]) => symbol),
+    stale: false,
+    indexData, indexCorrelation: returnCorrelation(indexData, "kospi", "nasdaq"),
+    sectors: sectorData, stockPairs: stockPairData, macroIndicators: macroIndicatorData
   };
+}
+
+type MarketPayload = Awaited<ReturnType<typeof collectMarketData>>;
+let cached: { savedAt: number; data: MarketPayload } | undefined;
+let inFlight: Promise<MarketPayload> | undefined;
+
+export async function getMarketData(): Promise<MarketPayload> {
+  if (cached && Date.now() - cached.savedAt < 5 * 60 * 1000) return cached.data;
+  if (inFlight) return inFlight;
+  inFlight = collectMarketData().then((data) => {
+    cached = { savedAt: Date.now(), data };
+    return data;
+  }).catch((error: unknown) => {
+    if (cached && Date.now() - cached.savedAt < 24 * 60 * 60 * 1000) return { ...cached.data, stale: true };
+    throw error;
+  }).finally(() => { inFlight = undefined; });
+  return inFlight;
 }

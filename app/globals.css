@@ -1,0 +1,29 @@
+* { box-sizing: border-box; }
+body { font-size: 16px; }
+button, textarea { font: inherit; }
+button { cursor: pointer; min-height: 44px; }
+button:disabled { cursor: not-allowed; opacity: .55; }
+button:focus-visible, a:focus-visible, summary:focus-visible, textarea:focus-visible { outline: 3px solid #5eead4; outline-offset: 4px; }
+summary { cursor: pointer; line-height: 1.7; }
+.analysis-panel { background: #17283e; border: 1px solid #52708e; border-radius: 28px; padding: clamp(20px, 4vw, 28px); margin-bottom: 24px; min-width: 0; }
+.analysis-heading { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; align-items: center; }
+.analysis-panel h2 { font-size: clamp(22px, 4vw, 28px); margin: 8px 0 16px; }
+.analysis-panel h3 { font-size: 20px; line-height: 1.5; margin: 24px 0 8px; }
+.analysis-panel p { line-height: 1.7; }
+.eyebrow { color: #5eead4; font-size: 14px; margin: 0; }
+.muted { color: #b6c5dd; font-size: 14px; line-height: 1.7; }
+.risk-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; margin: 16px 0; }
+.risk-card { border-radius: 18px; background: #223951; padding: 18px; }
+.risk-card p { margin: 0; }
+.metric { font-size: clamp(28px, 5vw, 36px); font-variant-numeric: tabular-nums; margin: 12px 0; letter-spacing: -.025em; color: #f8fafc; }
+.rolling-chart { height: 240px; min-width: 0; margin-top: 20px; }
+.empty-note { padding: 24px; background: #223951; color: #cbd5e1; border-radius: 16px; line-height: 1.8; }
+.memo-heading { border-top: 1px solid #3b536f; margin-top: 28px; padding-top: 24px; }
+.memo-heading h3 { margin: 6px 0 16px; }
+.memo-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.memo-actions button, .download-memo { background: #2b405a; border: 1px solid #536b87; color: #f8fafc; padding: 10px 14px; border-radius: 12px; font-size: 14px; }
+.memo-actions button[aria-pressed="true"], .download-memo { background: #ccfbf1; color: #083344; border-color: #ccfbf1; }
+.market-memo { display: block; width: 100%; resize: vertical; background: #0f1e31; border: 1px solid #536b87; color: #e2e8f0; border-radius: 16px; padding: 18px; line-height: 1.8; font-size: 16px; margin: 14px 0; }
+.methodology { margin-top: 26px; padding-top: 20px; border-top: 1px solid #3b536f; color: #cbd5e1; }
+.methodology li { margin: 12px 0; line-height: 1.8; }
+.methodology a { color: #5eead4; text-underline-offset: 4px; }

@@ -2,7 +2,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test": "tsc -p tests/tsconfig.json && node --test tests/*.test.cjs"
   },
   "dependencies": {
     "next": "latest",

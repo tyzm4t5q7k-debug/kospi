@@ -16,10 +16,17 @@ import {
   ResponsiveContainer
 } from "recharts";
 import { RefreshCcw } from "lucide-react";
+import { AnalysisPanel } from "./components/analysis-panel";
+import { periodOptions, filterByPeriod, rebaseRows, calculateReturn, formatReturn,
+  returnCorrelation, formatCorrelation, convertToKrw } from "../lib/analytics";
 
 type MarketData = {
   updatedAt: string;
   source: string;
+  dataDate?: string;
+  failedSymbols?: string[];
+  closeOnlySymbols?: string[];
+  stale?: boolean;
   indexCorrelation: number | null;
   indexData: any[];
   sectors: Record<string, any>;
@@ -37,71 +44,6 @@ const fallback: MarketData = {
   macroIndicators: {}
 };
 
-const periodOptions = [
-  { key: "1M", label: "1개월", days: 30 },
-  { key: "3M", label: "3개월", days: 90 },
-  { key: "6M", label: "6개월", days: 180 },
-  { key: "1Y", label: "1년", days: 365 },
-  { key: "ALL", label: "전체", days: null }
-];
-
-function filterByPeriod(rows: any[], periodKey: string) {
-  const option = periodOptions.find((item) => item.key === periodKey);
-
-  if (!option || option.days === null || rows.length === 0) {
-    return rows;
-  }
-
-  const lastDate = new Date(rows[rows.length - 1].month);
-  const cutoff = new Date(lastDate);
-  cutoff.setDate(cutoff.getDate() - option.days);
-
-  return rows.filter((row) => new Date(row.month) >= cutoff);
-}
-
-function rebaseRows(rows: any[], keys: string[]) {
-  if (rows.length === 0) return [];
-
-  const base = rows[0];
-
-  return rows.map((row) => {
-    const rebased: any = { month: row.month };
-
-    for (const key of keys) {
-      const baseValue = Number(base[key]);
-      const currentValue = Number(row[key]);
-
-      rebased[key] = baseValue
-        ? Number(((currentValue / baseValue) * 100).toFixed(2))
-        : null;
-    }
-
-    if (keys.length >= 2) {
-      rebased.spread = Number(
-        (Number(rebased[keys[0]]) - Number(rebased[keys[1]])).toFixed(2)
-      );
-    }
-
-    return rebased;
-  });
-}
-
-function calculateReturn(rows: any[], key: string) {
-  if (rows.length < 2) return null;
-
-  const first = Number(rows[0][key]);
-  const last = Number(rows[rows.length - 1][key]);
-
-  if (!first) return null;
-
-  return Number((((last / first) - 1) * 100).toFixed(1));
-}
-
-function formatReturn(value: number | null) {
-  if (value === null) return "-";
-  return `${value.toFixed(1)}%`;
-}
-
 function mergeMarketMacro(marketRows: any[], macroRows: any[], marketKey: string) {
   const macroMap = new Map(macroRows.map((row) => [row.month, row.value]));
 
@@ -115,68 +57,14 @@ function mergeMarketMacro(marketRows: any[], macroRows: any[], marketKey: string
 }
 
 function makeIndexInsight(kospiReturn: number | null, nasdaqReturn: number | null) {
-  if (kospiReturn === null || nasdaqReturn === null) {
-    return "데이터를 불러오면 선택 기간 기준의 시장 흐름 해석이 표시됩니다.";
-  }
-
-  const gap = Number((kospiReturn - nasdaqReturn).toFixed(1));
-
-  if (gap > 3) {
-    return `선택 기간 동안 KOSPI는 NASDAQ보다 ${gap.toFixed(1)}%p 강한 흐름을 보였습니다. 이 구간에서는 한국 시장의 반등 탄력이 미국 성장주 중심 시장보다 상대적으로 컸다고 해석할 수 있습니다.`;
-  }
-
-  if (gap < -3) {
-    return `선택 기간 동안 NASDAQ은 KOSPI보다 ${Math.abs(gap).toFixed(1)}%p 강한 흐름을 보였습니다. 이 구간에서는 미국 기술주 중심의 상승 모멘텀이 한국 시장보다 우세했다고 해석할 수 있습니다.`;
-  }
-
-  return `선택 기간 동안 KOSPI와 NASDAQ의 수익률 격차는 ${Math.abs(gap).toFixed(1)}%p 수준입니다. 두 시장이 비교적 비슷한 방향으로 움직인 구간으로 볼 수 있습니다.`;
+  if (kospiReturn === null || nasdaqReturn === null) return "비교 가능한 관측치가 2개 이상 필요합니다.";
+  const gap = kospiReturn - nasdaqReturn;
+  return `선택 기간 KOSPI는 ${formatReturn(kospiReturn)}, NASDAQ은 ${formatReturn(nasdaqReturn)}입니다. 수익률 차이는 ${Math.abs(gap).toFixed(1)}%p로 ${Math.abs(gap) < 0.05 ? "거의 같습니다" : gap > 0 ? "KOSPI가 상대적으로 높습니다" : "NASDAQ이 상대적으로 높습니다"}. 종료 시점의 수익률 차이만으로 기간 중 동행 여부나 상승·하락 원인을 판단할 수는 없습니다.`;
 }
 
-function makeSectorInsight(
-  sectorName: string,
-  koreaReturn: number | null,
-  usReturn: number | null
-) {
-  if (koreaReturn === null || usReturn === null) {
-    return "섹터 데이터를 불러오면 한국 테마와 미국 테마의 상대적 강도 해석이 표시됩니다.";
-  }
-
-  const gap = Number((koreaReturn - usReturn).toFixed(1));
-
-  if (gap > 5) {
-    return `${sectorName} 섹터에서는 선택 기간 동안 한국 테마 바스켓이 미국 테마 바스켓보다 ${gap.toFixed(1)}%p 강했습니다. 국내 종목군이 해당 테마에서 상대적으로 더 민감하게 반응한 구간입니다.`;
-  }
-
-  if (gap < -5) {
-    return `${sectorName} 섹터에서는 선택 기간 동안 미국 테마 바스켓이 한국 테마 바스켓보다 ${Math.abs(gap).toFixed(1)}%p 강했습니다. 글로벌 선도주 중심의 모멘텀이 더 뚜렷했던 구간으로 볼 수 있습니다.`;
-  }
-
-  return `${sectorName} 섹터에서는 한국과 미국 테마 바스켓의 수익률 격차가 ${Math.abs(gap).toFixed(1)}%p 수준입니다. 양국 테마주가 비교적 유사한 방향성을 보인 구간입니다.`;
-}
-
-function makeMacroInsight(
-  macroLabel: string,
-  marketName: string,
-  marketReturn: number | null,
-  macroReturn: number | null
-) {
-  if (marketReturn === null || macroReturn === null) {
-    return "금리·환율 데이터를 불러오면 시장 흐름과의 비교 해석이 표시됩니다.";
-  }
-
-  if (macroLabel.includes("환율") && macroReturn > 0 && marketReturn < 0) {
-    return `선택 기간 동안 ${macroLabel}이 상승하고 ${marketName}은 하락했습니다. 원/달러 환율 상승 구간에서 국내 위험자산이 부담을 받을 수 있다는 점을 확인할 수 있습니다.`;
-  }
-
-  if (macroLabel.includes("국채금리") && macroReturn > 0) {
-    return `선택 기간 동안 ${macroLabel}이 상승했습니다. 금리 상승은 성장주와 위험자산의 밸류에이션 부담으로 연결될 수 있어 ${marketName} 흐름과 함께 볼 필요가 있습니다.`;
-  }
-
-  if (macroLabel.includes("달러인덱스") && macroReturn > 0) {
-    return `선택 기간 동안 ${macroLabel}가 상승했습니다. 달러 강세 구간에서는 글로벌 자금이 안전자산을 선호할 가능성이 있어 한국 시장과 신흥국 자산에 부담이 될 수 있습니다.`;
-  }
-
-  return `선택 기간 동안 ${macroLabel} 변화율은 ${formatReturn(macroReturn)}, ${marketName} 수익률은 ${formatReturn(marketReturn)}입니다. 금리·환율 지표와 주가지수를 함께 비교하면 시장 변동의 배경을 더 입체적으로 볼 수 있습니다.`;
+function makeSectorInsight(name: string, korea: number | null, us: number | null) {
+  if (korea === null || us === null) return "선택 섹터의 모든 구성 종목과 공통 거래일 데이터가 필요합니다.";
+  return `${name} 바스켓의 한국 수익률은 ${formatReturn(korea)}, 미국 수익률은 ${formatReturn(us)}이며 차이는 ${Math.abs(korea - us).toFixed(1)}%p입니다. 선정 종목과 사업 구성이 다르므로 국가 전체나 산업 전체의 성과로 일반화하지 않습니다.`;
 }
 
 export default function Page() {
@@ -189,6 +77,7 @@ export default function Page() {
   const [macroMarketKey, setMacroMarketKey] = useState<"kospi" | "nasdaq">("kospi");
   const [periodKey, setPeriodKey] = useState("ALL");
   const [error, setError] = useState("");
+  const [currencyBasis, setCurrencyBasis] = useState<"local" | "krw">("local");
 
   async function loadData() {
     try {
@@ -198,10 +87,11 @@ export default function Page() {
       const res = await fetch("/api/market-data", { cache: "no-store" });
 
       if (!res.ok) {
-        throw new Error("market data api error");
+        throw new Error("시장 데이터를 가져오지 못했습니다. 잠시 후 새로고침해 주세요.");
       }
 
       const json = await res.json();
+      if (!Array.isArray(json.indexData) || json.indexData.length < 2) throw new Error("비교 가능한 지수 데이터가 부족합니다.");
       setData(json);
     } catch (e) {
       setError(e instanceof Error ? e.message : "데이터 로딩 실패");
@@ -214,49 +104,37 @@ export default function Page() {
     loadData();
   }, []);
 
+  const anchorDate = data.indexData.at(-1)?.month;
+  const rawIndexData = useMemo(() => filterByPeriod(data.indexData, periodKey), [data.indexData, periodKey]);
+  const fxData = data.macroIndicators?.usdkrw?.data || [];
   const filteredIndexData = useMemo(() => {
-    const filtered = filterByPeriod(data.indexData, periodKey);
-    return rebaseRows(filtered, ["kospi", "nasdaq"]);
-  }, [data.indexData, periodKey]);
-
-  const kospiReturn = useMemo(() => {
-    return calculateReturn(filteredIndexData, "kospi");
-  }, [filteredIndexData]);
-
-  const nasdaqReturn = useMemo(() => {
-    return calculateReturn(filteredIndexData, "nasdaq");
-  }, [filteredIndexData]);
+    const rows = currencyBasis === "krw" ? convertToKrw(rawIndexData, fxData, "nasdaq") : rawIndexData;
+    return rebaseRows(rows, ["kospi", "nasdaq"]);
+  }, [rawIndexData, fxData, currencyBasis]);
+  const kospiReturn = calculateReturn(filteredIndexData, "kospi");
+  const nasdaqReturn = calculateReturn(filteredIndexData, "nasdaq");
+  const indexCorrelation = returnCorrelation(filteredIndexData, "kospi", "nasdaq");
+  const nasdaqLabel = currencyBasis === "krw" ? "NASDAQ · 원화 환산" : "NASDAQ · 달러";
 
   const macroList = Object.values(data.macroIndicators || {});
   const selectedMacro = data.macroIndicators?.[macroKey] || macroList[0];
-
-  const filteredMacroData = useMemo(() => {
-    if (!selectedMacro?.data) return [];
-
-    const filtered = filterByPeriod(selectedMacro.data, periodKey);
-    return rebaseRows(filtered, ["value"]);
-  }, [selectedMacro, periodKey]);
-
-  const macroChartData = useMemo(() => {
-    return mergeMarketMacro(filteredIndexData, filteredMacroData, macroMarketKey);
-  }, [filteredIndexData, filteredMacroData, macroMarketKey]);
-
-  const selectedMarketReturn = useMemo(() => {
-    return calculateReturn(filteredIndexData, macroMarketKey);
-  }, [filteredIndexData, macroMarketKey]);
-
-  const macroReturn = useMemo(() => {
-    return calculateReturn(filteredMacroData, "value");
-  }, [filteredMacroData]);
-
-  const macroInsight = useMemo(() => {
-    return makeMacroInsight(
-      selectedMacro?.label || "금리·환율 지표",
-      macroMarketKey === "kospi" ? "KOSPI" : "NASDAQ",
-      selectedMarketReturn,
-      macroReturn
-    );
-  }, [selectedMacro, macroMarketKey, selectedMarketReturn, macroReturn]);
+  // Align raw observations first, then use the same base date for both series.
+  const rawMacroComparison = useMemo(() => mergeMarketMacro(
+    rawIndexData, selectedMacro?.data || [], macroMarketKey
+  ), [rawIndexData, selectedMacro, macroMarketKey]);
+  const macroChartData = useMemo(() => rebaseRows(rawMacroComparison, ["market", "macro"]), [rawMacroComparison]);
+  const selectedMarketReturn = calculateReturn(rawMacroComparison, "market");
+  const macroReturn = calculateReturn(rawMacroComparison, "macro");
+  const macroStart = rawMacroComparison[0]?.macro;
+  const macroEnd = rawMacroComparison.at(-1)?.macro;
+  const rateChangeBp = macroKey === "us10y" && rawMacroComparison.length >= 2
+    ? (Number(macroEnd) - Number(macroStart)) * 100 : null;
+  const macroChangeText = macroKey === "us10y"
+    ? rateChangeBp === null ? "—" : `${rateChangeBp > 0 ? "+" : ""}${rateChangeBp.toFixed(1)}bp`
+    : formatReturn(macroReturn);
+  const macroInsight = rawMacroComparison.length < 2
+    ? "공통 거래일의 지표 데이터가 부족합니다. 다른 지표나 기간을 선택해 주세요."
+    : `${rawMacroComparison[0].month} ~ ${rawMacroComparison.at(-1)?.month} 기준 ${selectedMacro.label}의 ${macroKey === "us10y" ? "금리 차이" : "변화율"}는 ${macroChangeText}, ${macroMarketKey === "kospi" ? "KOSPI(원화)" : "NASDAQ(달러)"} 수익률은 ${formatReturn(selectedMarketReturn)}입니다. 같은 기간에 관측된 변화이며, 이 비교만으로 인과관계를 확인할 수는 없습니다.`;
 
   const sectorList = Object.values(data.sectors || {});
   const selectedSector = data.sectors?.[sectorKey] || sectorList[0];
@@ -264,9 +142,9 @@ export default function Page() {
   const filteredSectorData = useMemo(() => {
     if (!selectedSector?.data) return [];
 
-    const filtered = filterByPeriod(selectedSector.data, periodKey);
+    const filtered = filterByPeriod(selectedSector.data, periodKey, anchorDate);
     return rebaseRows(filtered, ["korea", "us"]);
-  }, [selectedSector, periodKey]);
+  }, [selectedSector, periodKey, anchorDate]);
 
   const koreaThemeReturn = useMemo(() => {
     return calculateReturn(filteredSectorData, "korea");
@@ -282,9 +160,9 @@ export default function Page() {
   const filteredStockPairData = useMemo(() => {
     if (!selectedStockPair?.data) return [];
 
-    const filtered = filterByPeriod(selectedStockPair.data, periodKey);
+    const filtered = filterByPeriod(selectedStockPair.data, periodKey, anchorDate);
     return rebaseRows(filtered, ["korea", "us"]);
-  }, [selectedStockPair, periodKey]);
+  }, [selectedStockPair, periodKey, anchorDate]);
 
   const koreaStockReturn = useMemo(() => {
     return calculateReturn(filteredStockPairData, "korea");
@@ -316,15 +194,15 @@ export default function Page() {
             <p style={styles.ownerText}>Built by Seunghyun Kim</p>
           </div>
 
-          <button onClick={loadData} style={styles.refreshButton}>
+          <button onClick={loadData} disabled={loading} style={styles.refreshButton}>
             <RefreshCcw size={16} />
-            실제 데이터 새로고침
+            {loading ? "데이터 확인 중…" : "실제 데이터 새로고침"}
           </button>
         </nav>
 
         <section style={styles.hero}>
           <div style={styles.heroMain}>
-            <p style={styles.badge}>Yahoo Finance 자동 연동 · 일별 데이터</p>
+            <p style={styles.badge}>Yahoo Finance · 완료된 일별 관측치</p>
 
             <h2 style={styles.heroTitle}>
               코스피와 나스닥, 그리고 섹터별 테마주의 연동성
@@ -333,8 +211,7 @@ export default function Page() {
             <p style={styles.description}>
               KOSPI와 NASDAQ 지수를 같은 기준일 100으로 환산하고,
               한국 상장 테마주와 미국 상장 테마주의 흐름을 섹터별로 비교합니다.
-              기간별 수익률 흐름을 선택할 수 있도록 1개월, 3개월, 6개월, 1년,
-              전체 보기 기능을 추가했습니다.
+              기간과 비교 통화를 선택하고 수익률, 동행 정도, 하락 위험을 함께 확인합니다.
             </p>
 
             <div style={styles.periodBox}>
@@ -342,6 +219,7 @@ export default function Page() {
                 <button
                   key={option.key}
                   onClick={() => setPeriodKey(option.key)}
+                  aria-pressed={periodKey === option.key}
                   style={periodKey === option.key ? styles.activeButton : styles.button}
                 >
                   {option.label}
@@ -349,6 +227,17 @@ export default function Page() {
               ))}
             </div>
 
+            <div style={styles.periodBox} role="group" aria-label="지수 비교 통화">
+              <button onClick={() => setCurrencyBasis("local")} aria-pressed={currencyBasis === "local"}
+                style={currencyBasis === "local" ? styles.activeButton : styles.button}>각 시장 통화 기준</button>
+              <button onClick={() => setCurrencyBasis("krw")} aria-pressed={currencyBasis === "krw"}
+                disabled={!fxData.length}
+                style={currencyBasis === "krw" ? styles.activeButton : styles.button}>나스닥 원화 환산</button>
+            </div>
+            <p style={styles.notice}>
+              {currencyBasis === "krw" ? "나스닥에 원/달러 환율 변화를 반영합니다. 환헤지·세금·거래 비용은 제외합니다." : "KOSPI는 원화, NASDAQ은 달러 기준입니다. 통화 선택은 지수 비교와 아래 분석 메모에 적용됩니다."}
+              {!loading && !fxData.length && " 환율 데이터가 없어 원화 환산을 사용할 수 없습니다."}
+            </p>
             <div style={styles.stats}>
               <div style={styles.statBox}>
                 <p style={styles.subText}>선택 기간 KOSPI 수익률</p>
@@ -356,31 +245,36 @@ export default function Page() {
               </div>
 
               <div style={styles.statBox}>
-                <p style={styles.subText}>선택 기간 NASDAQ 수익률</p>
+                <p style={styles.subText}>선택 기간 {nasdaqLabel} 수익률</p>
                 <h3>{formatReturn(nasdaqReturn)}</h3>
               </div>
 
               <div style={styles.statBox}>
-                <p style={styles.subText}>전체 기간 상관계수</p>
-                <h3>{data.indexCorrelation ?? "-"}</h3>
+                <p style={styles.subText}>선택 기간 수익률 상관계수</p>
+                <h3>{formatCorrelation(indexCorrelation)}</h3>
               </div>
             </div>
 
-            <p style={styles.notice}>
+            <p style={styles.notice} role="status">
               {loading && "데이터를 불러오는 중입니다."}
               {error && `오류: ${error}`}
-              {!loading && !error && data.updatedAt
-                ? `마지막 업데이트: ${new Date(data.updatedAt).toLocaleString("ko-KR")}`
+              {data.updatedAt
+                ? ` · 데이터 기준일: ${data.dataDate || "—"} · 수집: ${new Date(data.updatedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })} KST`
                 : ""}
             </p>
+            <p style={styles.notice}>{filteredIndexData.length >= 2 ? `실제 비교 기간: ${filteredIndexData[0].month} ~ ${filteredIndexData.at(-1)?.month} · 공통 관측일 ${filteredIndexData.length}개` : !loading ? "선택 조건에 맞는 비교 데이터가 부족합니다." : ""}</p>
+            {data.stale && <p role="alert" style={styles.warning}>갱신에 실패해 이전에 수집한 데이터를 표시합니다. 위 수집 시각을 확인해 주세요.</p>}
+            {error && data.updatedAt && <p style={styles.warning}>새 데이터로 갱신하지 못했습니다. 화면은 이전 수집 결과입니다.</p>}
+            {!!data.failedSymbols?.length && <details style={styles.warning}><summary>일부 데이터를 불러오지 못했습니다 ({data.failedSymbols.length}개)</summary><p>{data.failedSymbols.join(", ")}</p><p>구성 종목이 빠진 바스켓은 계산하지 않습니다.</p></details>}
+            {!!data.closeOnlySymbols?.length && <details style={styles.notice}><summary>일반 종가를 사용하는 시계열 ({data.closeOnlySymbols.length}개)</summary><p>{data.closeOnlySymbols.join(", ")}</p><p>수정종가가 제공되지 않아 해당 시계열 전체를 일반 종가로 계산합니다.</p></details>}
           </div>
 
           <div style={styles.heroSide}>
             <div style={styles.card}>
               <p style={styles.subText}>분석 기준</p>
-              <h3>선택 기간 첫날 = 100</h3>
+              <h3>공통 관측일 첫날 = 100</h3>
               <p style={styles.cardText}>
-                기간을 바꾸면 해당 기간의 첫 거래일을 100으로 다시 환산합니다.
+                같은 날짜의 데이터를 맞춘 뒤 기준을 통일합니다. 주가 수준이 아닌 관측일 사이의 수익률로 동행 정도를 계산합니다.
               </p>
             </div>
 
@@ -398,7 +292,7 @@ export default function Page() {
           <div style={styles.insightCard}>
             <p style={styles.subText}>Market Insight</p>
             <h2 style={styles.insightTitle}>시장 자동 분석 코멘트</h2>
-            <p style={styles.insightText}>{indexInsight}</p>
+            <p style={styles.insightText}>{indexInsight}</p><p style={styles.notice}>{currencyBasis === "krw" ? "나스닥 원화 환산 기준" : "각 시장 통화 기준"} · 동일 날짜라도 한국과 미국의 장 마감 시각은 다릅니다.</p>
           </div>
 
           <div style={styles.insightCard}>
@@ -474,8 +368,8 @@ export default function Page() {
                   <YAxis stroke="#94a3b8" />
                   <Tooltip />
                   <Legend />
-                  <Line type="monotone" dataKey="kospi" name="KOSPI" strokeWidth={3} dot={false} />
-                  <Line type="monotone" dataKey="nasdaq" name="NASDAQ" strokeWidth={3} dot={false} />
+                  <Line type="monotone" dataKey="kospi" name="KOSPI" stroke="#60a5fa" strokeWidth={3} dot={false} />
+                  <Line type="monotone" dataKey="nasdaq" name={nasdaqLabel} stroke="#2dd4bf" strokeWidth={3} dot={false} />
                 </LineChart>
               ) : (
                 <BarChart data={filteredIndexData}>
@@ -483,12 +377,17 @@ export default function Page() {
                   <XAxis dataKey="month" stroke="#94a3b8" minTickGap={28} />
                   <YAxis stroke="#94a3b8" />
                   <Tooltip />
-                  <Bar dataKey="spread" name="KOSPI - NASDAQ" />
+                  <Bar dataKey="spread" name="KOSPI − NASDAQ 수익률 차이 (%p)" fill="#60a5fa" />
                 </BarChart>
               )}
             </ResponsiveContainer>
           </div>
         </section>
+
+        <AnalysisPanel rows={filteredIndexData} currencyBasis={currencyBasis}
+          periodLabel={periodOptions.find((p) => p.key === periodKey)?.label || "전체"}
+          updatedAt={data.updatedAt} stale={!!data.stale || !!error}
+          failedSymbols={data.failedSymbols || []} />
 
         <section style={styles.chartCard}>
           <div style={styles.chartHeader}>
@@ -540,8 +439,8 @@ export default function Page() {
                 </div>
 
                 <div style={styles.statBox}>
-                  <p style={styles.subText}>선택 기간 지표 변화율</p>
-                  <h3>{formatReturn(macroReturn)}</h3>
+                  <p style={styles.subText}>{macroKey === "us10y" ? "선택 기간 금리 변화" : "선택 기간 지표 변화율"}</p>
+                  <h3>{macroChangeText}</h3>
                 </div>
               </div>
 
@@ -562,6 +461,7 @@ export default function Page() {
                     <Line
                       type="monotone"
                       dataKey="market"
+                      stroke="#60a5fa"
                       name={macroMarketKey === "kospi" ? "KOSPI" : "NASDAQ"}
                       strokeWidth={3}
                       dot={false}
@@ -569,6 +469,7 @@ export default function Page() {
                     <Line
                       type="monotone"
                       dataKey="macro"
+                      stroke="#2dd4bf"
                       name={selectedMacro.label}
                       strokeWidth={3}
                       dot={false}
@@ -577,10 +478,13 @@ export default function Page() {
                 </ResponsiveContainer>
               </div>
 
-              <p style={styles.notice}>{selectedMacro.description}</p>
+              <p style={styles.notice}>{selectedMacro.description} 차트는 공통 첫날 100 기준입니다.</p>
+              <p style={styles.notice}>{rawMacroComparison.length >= 2
+                ? `실제 지표: ${Number(macroStart).toLocaleString("ko-KR", { maximumFractionDigits: 3 })} → ${Number(macroEnd).toLocaleString("ko-KR", { maximumFractionDigits: 3 })} ${selectedMacro.unit || ""}` : "비교 가능한 관측치가 부족합니다."}
+                {macroKey === "us10y" && " · 1bp = 0.01%p. 금리 변화는 채권 투자 수익률이 아닙니다."}</p>
             </>
           ) : (
-            <p style={styles.notice}>금리·환율 데이터를 불러오는 중입니다.</p>
+            <p style={styles.notice}>{loading ? "금리·환율 데이터를 불러오는 중입니다." : "금리·환율 데이터가 없습니다. 새로고침을 시도해 주세요."}</p>
           )}
         </section>
 
@@ -618,8 +522,8 @@ export default function Page() {
                 </div>
 
                 <div style={styles.statBox}>
-                  <p style={styles.subText}>전체 기간 섹터 상관계수</p>
-                  <h3>{selectedSector.correlation ?? "-"}</h3>
+                  <p style={styles.subText}>선택 기간 수익률 상관계수</p>
+                  <h3>{formatCorrelation(returnCorrelation(filteredSectorData, "korea", "us"))}</h3>
                 </div>
               </div>
 
@@ -644,6 +548,7 @@ export default function Page() {
                 </div>
               </div>
 
+              <p style={styles.notice}>{filteredSectorData.length >= 2 ? `${filteredSectorData[0].month} ~ ${filteredSectorData.at(-1)?.month} · ${filteredSectorData.length}개 공통 관측일 · 각 시장 통화 기준` : "모든 구성 종목의 공통 데이터가 부족해 계산을 표시하지 않습니다."}</p>
               <div style={styles.chartBox}>
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={filteredSectorData}>
@@ -652,8 +557,8 @@ export default function Page() {
                     <YAxis stroke="#94a3b8" />
                     <Tooltip />
                     <Legend />
-                    <Area type="monotone" dataKey="korea" name="Korea Theme Basket" strokeWidth={3} fillOpacity={0.2} />
-                    <Area type="monotone" dataKey="us" name="U.S. Theme Basket" strokeWidth={3} fillOpacity={0.2} />
+                    <Area type="monotone" dataKey="korea" name="Korea Theme Basket" stroke="#60a5fa" fill="#60a5fa" strokeWidth={3} fillOpacity={0.2} />
+                    <Area type="monotone" dataKey="us" name="U.S. Theme Basket" stroke="#2dd4bf" fill="#2dd4bf" strokeWidth={3} fillOpacity={0.2} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -697,8 +602,8 @@ export default function Page() {
                 </div>
 
                 <div style={styles.statBox}>
-                  <p style={styles.subText}>전체 기간 상관계수</p>
-                  <h3>{selectedStockPair.correlation ?? "-"}</h3>
+                  <p style={styles.subText}>선택 기간 수익률 상관계수</p>
+                  <h3>{formatCorrelation(returnCorrelation(filteredStockPairData, "korea", "us"))}</h3>
                 </div>
               </div>
 
@@ -723,6 +628,7 @@ export default function Page() {
                 </div>
               </div>
 
+              <p style={styles.notice}>{filteredStockPairData.length >= 2 ? `${filteredStockPairData[0].month} ~ ${filteredStockPairData.at(-1)?.month} · ${filteredStockPairData.length}개 공통 관측일 · 각 시장 통화 기준` : "두 종목의 공통 데이터가 부족합니다."}</p>
               <div style={styles.chartBox}>
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={filteredStockPairData}>
@@ -734,6 +640,7 @@ export default function Page() {
                     <Line
                       type="monotone"
                       dataKey="korea"
+                      stroke="#60a5fa"
                       name={selectedStockPair.koreaName}
                       strokeWidth={3}
                       dot={false}
@@ -741,6 +648,7 @@ export default function Page() {
                     <Line
                       type="monotone"
                       dataKey="us"
+                      stroke="#2dd4bf"
                       name={selectedStockPair.usName}
                       strokeWidth={3}
                       dot={false}
@@ -1012,6 +920,7 @@ export default function Page() {
       style={styles.linkButton}
       href="https://blog.naver.com/snghnkm"
       target="_blank"
+      rel="noopener noreferrer"
     >
       Blog
     </a>
@@ -1034,6 +943,7 @@ const styles: Record<string, React.CSSProperties> = {
     minHeight: "100vh",
     background: "linear-gradient(180deg, #0f172a 0%, #111827 45%, #1e293b 100%)",
     color: "#f8fafc",
+    overflowWrap: "anywhere",
     fontFamily: "Arial, sans-serif"
   },
   container: {
@@ -1076,7 +986,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   hero: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))",
     gap: 24,
     marginBottom: 24
   },
@@ -1106,7 +1016,7 @@ const styles: Record<string, React.CSSProperties> = {
   description: {
     color: "#dbeafe",
     lineHeight: 1.7,
-    fontSize: "clamp(15px, 3.6vw, 17px)"
+    fontSize: "clamp(16px, 3.6vw, 17px)"
   },
   periodBox: {
     display: "flex",
@@ -1116,7 +1026,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   stats: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))",
     gap: 12,
     marginTop: 20,
     marginBottom: 20
@@ -1136,13 +1046,16 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#b6c5dd",
     lineHeight: 1.6
   },
+  warning: { color: "#fde68a", lineHeight: 1.7, overflowWrap: "anywhere" },
   notice: {
+    fontSize: 14,
+    lineHeight: 1.7,
     color: "#b6c5dd",
     marginTop: 12
   },
   insightSection: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))",
     gap: 16,
     marginBottom: 24
   },
@@ -1160,7 +1073,7 @@ const styles: Record<string, React.CSSProperties> = {
   insightText: {
     color: "#dbeafe",
     lineHeight: 1.8,
-    fontSize: "clamp(15px, 3.6vw, 16px)"
+    fontSize: "16px"
   },
   summarySection: {
     border: "1px solid #3b4a63",
@@ -1171,7 +1084,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   summaryGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))",
     gap: 14,
     marginTop: 20
   },
@@ -1222,7 +1135,8 @@ const styles: Record<string, React.CSSProperties> = {
   },
   chartBox: {
     height: 360,
-    minWidth: 720
+    minWidth: 0,
+    width: "100%"
   },
   bankSection: {
     border: "1px solid #3b4a63",
@@ -1233,7 +1147,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   bankGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))",
     gap: 14,
     marginTop: 20
   },
@@ -1253,7 +1167,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   productGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))",
     gap: 14,
     marginTop: 20
   },
@@ -1304,11 +1218,11 @@ const styles: Record<string, React.CSSProperties> = {
   aboutText: {
     color: "#dbeafe",
     lineHeight: 1.8,
-    fontSize: "clamp(15px, 3.6vw, 16px)"
+    fontSize: "16px"
   },
   aboutGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))",
     gap: 14,
     marginTop: 20
   },
@@ -1328,7 +1242,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   customerGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))",
     gap: 14,
     marginTop: 20
   },
@@ -1354,7 +1268,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   backgroundGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))",
     gap: 14,
     marginTop: 20
   },
@@ -1374,7 +1288,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   howToGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))",
     gap: 14,
     marginTop: 20
   },
@@ -1416,3 +1330,4 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 700
   }
 };
+
