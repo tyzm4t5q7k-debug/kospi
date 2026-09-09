@@ -31,9 +31,9 @@ const sectors = {
   },
   ai: {
     label: "AI",
-    koreaName: "NAVER · 카카오 · 더존비즈온",
+    koreaName: "NAVER · 카카오",
     usName: "Microsoft · Meta · Palantir",
-    korea: ["035420.KS", "035720.KS", "012510.KS"],
+    korea: ["035420.KS", "035720.KS"],
     us: ["MSFT", "META", "PLTR"]
   },
   shipbuilding: {
@@ -214,6 +214,8 @@ async function collectMarketData() {
     const us = equalWeightBasket(sector.us.map(series));
     const data = alignSeries(korea, us, "korea", "us");
     return [key, { key, label: sector.label, koreaName: sector.koreaName, usName: sector.usName,
+      compositionNote: key === "ai" ? "2026-09-09 구성 변경: 상장폐지 관련 공시와 데이터 수집 불가로 더존비즈온(012510)을 제외하고 NAVER·카카오로 구성했습니다. 과거 구간도 현재 두 종목 기준으로 다시 계산하므로 이전 3종목 버전과 수익률이 다릅니다." : null,
+      compositionSource: key === "ai" ? "https://kind.krx.co.kr/external/2026/05/28/000523/20260528001262/68629.htm" : null,
       data, missingSymbols, correlation: returnCorrelation(data, "korea", "us") }];
   }));
   const stockPairData = Object.fromEntries(Object.entries(stockPairs).map(([key, pair]) => {

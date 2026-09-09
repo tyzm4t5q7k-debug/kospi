@@ -22,6 +22,10 @@ test('market loading deduplicates requests, preserves units, rejects partial bas
     assert.equal(data, concurrent);
     assert.equal(data.dataDate, '2025-01-06');
     assert.deepEqual(data.failedSymbols, ['005930.KS']);
+    assert.equal(requests.has('012510.KS'), false);
+    assert.equal(data.sectors.ai.koreaName, 'NAVER · 카카오');
+    assert.equal(data.sectors.ai.data.length, 3);
+    assert.match(data.sectors.ai.compositionNote, /현재 두 종목/);
     assert.deepEqual(data.sectors.semiconductor.data, []);
     assert.equal(data.macroIndicators.us10y.data[0].value, 4);
     assert.equal(data.macroIndicators.usdkrw.data[0].value, 1300);

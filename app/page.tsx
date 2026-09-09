@@ -548,6 +548,10 @@ export default function Page() {
                 </div>
               </div>
 
+              {selectedSector.compositionNote && <p style={styles.notice}>
+                {selectedSector.compositionNote}{" "}
+                <a href={selectedSector.compositionSource} target="_blank" rel="noopener noreferrer" style={{ color: "#5eead4" }}>구성 변경 관련 공시</a>
+              </p>}
               <p style={styles.notice}>{filteredSectorData.length >= 2 ? `${filteredSectorData[0].month} ~ ${filteredSectorData.at(-1)?.month} · ${filteredSectorData.length}개 공통 관측일 · 각 시장 통화 기준` : "모든 구성 종목의 공통 데이터가 부족해 계산을 표시하지 않습니다."}</p>
               <div style={styles.chartBox}>
                 <ResponsiveContainer width="100%" height="100%">
