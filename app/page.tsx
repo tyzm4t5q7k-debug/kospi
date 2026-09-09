@@ -13,9 +13,14 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-  ResponsiveContainer
+  ResponsiveContainer,
+  ReferenceLine
 } from "recharts";
 import { RefreshCcw } from "lucide-react";
+import { ScenarioLab } from "./components/scenario-lab";
+import { ResearchNotebook } from "./components/research-notebook";
+import { chartAnnotations, type ResearchNote } from "../lib/research";
+import type { ScenarioSnapshot } from "../lib/scenarios";
 import { AnalysisPanel } from "./components/analysis-panel";
 import { periodOptions, filterByPeriod, rebaseRows, calculateReturn, formatReturn,
   returnCorrelation, formatCorrelation, convertToKrw } from "../lib/analytics";
@@ -68,6 +73,9 @@ function makeSectorInsight(name: string, korea: number | null, us: number | null
 }
 
 export default function Page() {
+  const [notes, setNotes] = useState<ResearchNote[]>([]);
+  const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
+  const [scenario, setScenario] = useState<ScenarioSnapshot | null>(null);
   const [data, setData] = useState<MarketData>(fallback);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"index" | "spread">("index");
@@ -111,6 +119,7 @@ export default function Page() {
     const rows = currencyBasis === "krw" ? convertToKrw(rawIndexData, fxData, "nasdaq") : rawIndexData;
     return rebaseRows(rows, ["kospi", "nasdaq"]);
   }, [rawIndexData, fxData, currencyBasis]);
+  const annotations = useMemo(() => chartAnnotations(notes, filteredIndexData), [notes, filteredIndexData]);
   const kospiReturn = calculateReturn(filteredIndexData, "kospi");
   const nasdaqReturn = calculateReturn(filteredIndexData, "nasdaq");
   const indexCorrelation = returnCorrelation(filteredIndexData, "kospi", "nasdaq");
@@ -200,6 +209,7 @@ export default function Page() {
           </button>
         </nav>
 
+        <nav className="section-links" aria-label="포트폴리오 섹션"><a href="#market-chart">시장 비교</a><a href="#scenarios">시나리오 계산</a><a href="#research-notes">이슈 노트</a><a href="#report-export">PDF 리포트</a></nav>
         <section style={styles.hero}>
           <div style={styles.heroMain}>
             <p style={styles.badge}>Yahoo Finance · 완료된 일별 관측치</p>
@@ -279,7 +289,7 @@ export default function Page() {
             </div>
 
             <div style={styles.card}>
-              <p style={styles.subText}>은행권 연결</p>
+              <p style={styles.subText}>금융 직무 연결</p>
               <h3>시장·금리·환율</h3>
               <p style={styles.cardText}>
                 주가지수뿐 아니라 환율, 미국 장기금리, 달러 흐름까지 함께 비교합니다.
@@ -335,7 +345,7 @@ export default function Page() {
           </div>
         </section>
 
-        <section style={styles.chartCard}>
+        <section id="market-chart" style={styles.chartCard}>
           <div style={styles.chartHeader}>
             <div>
               <p style={styles.subText}>Indexed Price Movement</p>
@@ -368,6 +378,7 @@ export default function Page() {
                   <YAxis stroke="#94a3b8" />
                   <Tooltip />
                   <Legend />
+                  {annotations.map((note) => <ReferenceLine key={note.id} x={note.chartDate} stroke="#fbbf24" strokeDasharray="4 4" label={{ value: String(note.number), fill: "#fde68a", position: "insideTopRight" }} />)}
                   <Line type="monotone" dataKey="kospi" name="KOSPI" stroke="#60a5fa" strokeWidth={3} dot={false} />
                   <Line type="monotone" dataKey="nasdaq" name={nasdaqLabel} stroke="#2dd4bf" strokeWidth={3} dot={false} />
                 </LineChart>
@@ -377,6 +388,7 @@ export default function Page() {
                   <XAxis dataKey="month" stroke="#94a3b8" minTickGap={28} />
                   <YAxis stroke="#94a3b8" />
                   <Tooltip />
+                  {annotations.map((note) => <ReferenceLine key={note.id} x={note.chartDate} stroke="#fbbf24" strokeDasharray="4 4" label={{ value: String(note.number), fill: "#fde68a", position: "insideTopRight" }} />)}
                   <Bar dataKey="spread" name="KOSPI − NASDAQ 수익률 차이 (%p)" fill="#60a5fa" />
                 </BarChart>
               )}
@@ -384,10 +396,13 @@ export default function Page() {
           </div>
         </section>
 
+        {!!notes.length && <div className="annotation-legend">{annotations.length ? annotations.map((note) => <a key={note.id} href="#research-notes">{note.number}. {note.date} · {note.title}{note.date !== note.chartDate ? ` (차트: ${note.chartDate})` : ""}</a>) : <p>현재 비교 기간에 표시할 이슈 노트가 없습니다.</p>}</div>}
+        <ScenarioLab onChange={setScenario} />
         <AnalysisPanel rows={filteredIndexData} currencyBasis={currencyBasis}
           periodLabel={periodOptions.find((p) => p.key === periodKey)?.label || "전체"}
           updatedAt={data.updatedAt} stale={!!data.stale || !!error}
-          failedSymbols={data.failedSymbols || []} />
+          failedSymbols={data.failedSymbols || []} selectedNote={notes.find((note) => note.id === selectedNoteId) || null} scenario={scenario} />
+        <ResearchNotebook notes={notes} onChange={setNotes} selectedId={selectedNoteId} onSelect={setSelectedNoteId} />
 
         <section style={styles.chartCard}>
           <div style={styles.chartHeader}>
@@ -742,7 +757,7 @@ export default function Page() {
     <h2 style={styles.sectionTitle}>고객 설명용 요약</h2>
     <p style={styles.aboutText}>
       같은 시장 데이터라도 고객의 투자성향에 따라 설명 방식은 달라져야 합니다.
-      이 섹션은 KOSPI·NASDAQ·금리·환율 흐름을 은행 상담 상황에서 어떻게 쉽게
+      이 섹션은 KOSPI·NASDAQ·금리·환율 흐름을 금융 상담 상황에서 어떻게 쉽게
       설명할 수 있는지 정리한 예시입니다.
     </p>
   </div>
@@ -791,35 +806,30 @@ export default function Page() {
 </section>
         <section style={styles.bankSection}>
           <div>
-            <p style={styles.subText}>Banking Perspective</p>
-            <h2 style={styles.sectionTitle}>은행권 관점에서의 활용</h2>
+            <p style={styles.subText}>Finance Perspectives</p>
+            <h2 style={styles.sectionTitle}>금융 직무별 활용 관점</h2>
             <p style={styles.aboutText}>
-              이 프로젝트는 단순히 주가 흐름을 보여주는 데 그치지 않고, 시장 데이터를 고객에게
-              설명할 수 있는 형태로 정리하는 데 목적이 있습니다. 은행권에서는 투자 성과 자체보다
-              고객의 투자성향, 투자기간, 위험수용도를 고려해 시장 흐름을 쉽게 설명하는 역량이
-              중요하다고 생각했습니다.
+              같은 시장 데이터도 기업의 자금 조달, 개인의 자산관리, 증권 리서치와 자산운용에서
+              서로 다른 질문으로 이어집니다. 비교 기준과 가정을 명확히 하고, 관측 사실을 각 업무의
+              판단에 필요한 정보로 정리하는 과정을 담았습니다.
             </p>
           </div>
 
           <div style={styles.bankGrid}>
             <div style={styles.bankCard}>
-              <h3>고객 상담</h3>
-              <p>복잡한 시장 흐름을 KOSPI, NASDAQ, 섹터별 테마주 비교로 단순화해 설명할 수 있습니다.</p>
+              <h3>기업금융</h3><p>금리와 환율 변화가 차입 비용과 외화결제에 미치는 영향을 계산하고, 만기와 현금흐름을 점검합니다.</p>
             </div>
 
             <div style={styles.bankCard}>
-              <h3>자산관리</h3>
-              <p>국내외 시장의 상대 흐름을 바탕으로 분산투자와 장기투자 관점을 설명할 수 있습니다.</p>
+              <h3>개인 자산관리</h3><p>자금 목적과 투자기간을 바탕으로 해외자산의 환율 효과와 하락 위험을 설명합니다.</p>
             </div>
 
             <div style={styles.bankCard}>
-              <h3>리스크 인식</h3>
-              <p>수익률뿐 아니라 변동성, 상관관계, 시장 간 차이를 함께 보며 위험 요인을 고려합니다.</p>
+              <h3>증권 리서치</h3><p>기사·공시의 사실과 분석 가설을 구분하고, 업종·종목 간 차이를 근거와 함께 기록합니다.</p>
             </div>
 
             <div style={styles.bankCard}>
-              <h3>상품 이해</h3>
-              <p>예금, 펀드, ETF, ISA, 연금저축 등 금융상품과 시장 흐름을 연결해 설명할 수 있습니다.</p>
+              <h3>자산운용</h3><p>자산별 비중과 가격·환율의 수익률 기여도, 최대 낙폭과 집중도를 함께 살펴봅니다.</p>
             </div>
           </div>
         </section>

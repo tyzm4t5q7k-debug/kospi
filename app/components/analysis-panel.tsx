@@ -4,6 +4,9 @@ import { useMemo, useState } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 import { calculateReturn, formatReturn, formatCorrelation, returnCorrelation, maxDrawdown, rollingCorrelation, type SeriesRow } from "../../lib/analytics";
 
+import { perspectives, type Perspective, type ResearchNote } from "../../lib/research";
+import type { ScenarioSnapshot } from "../../lib/scenarios";
+
 type Props = {
   rows: SeriesRow[];
   currencyBasis: "local" | "krw";
@@ -11,10 +14,16 @@ type Props = {
   updatedAt: string;
   stale: boolean;
   failedSymbols: string[];
+  selectedNote: ResearchNote | null;
+  scenario: ScenarioSnapshot | null;
 };
 
-export function AnalysisPanel({ rows, currencyBasis, periodLabel, updatedAt, stale, failedSymbols }: Props) {
-  const [audience, setAudience] = useState<"rm" | "personal">("rm");
+export function AnalysisPanel({ rows, currencyBasis, periodLabel, updatedAt, stale, failedSymbols, selectedNote, scenario }: Props) {
+  const [audience, setAudience] = useState<Perspective>("market");
+  const [commentary, setCommentary] = useState("");
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [pdfStatus, setPdfStatus] = useState("");
+  const perspective = perspectives.find((p) => p.key === audience)!;
   const correlation = returnCorrelation(rows, "kospi", "nasdaq");
   const rolling = useMemo(() => rollingCorrelation(rows, "kospi", "nasdaq", 20), [rows]);
   const kReturn = calculateReturn(rows, "kospi"), nReturn = calculateReturn(rows, "nasdaq");
@@ -22,9 +31,7 @@ export function AnalysisPanel({ rows, currencyBasis, periodLabel, updatedAt, sta
   const usable = rows.length >= 2;
   const range = usable ? `${rows[0].month} ~ ${rows.at(-1)?.month}` : "분석할 데이터가 부족합니다";
   const basis = currencyBasis === "krw" ? "KOSPI 원화 / NASDAQ 원화 환산" : "KOSPI 원화 / NASDAQ 달러";
-  const questions = audience === "rm"
-    ? ["매출과 매입의 결제 통화, 외화 수취·지급 시점은 어떻게 다른가?", "외화 순수취·순지급 규모와 기존 환헤지 계약을 확인했는가?", "변동금리 차입 비중과 만기 일정이 현금흐름에 미치는 영향은 무엇인가?"]
-    : ["자금의 사용 시점과 감내할 수 있는 손실 범위는 어느 정도인가?", "기존 해외자산과 외화 보유액까지 합친 환율 노출은 어느 정도인가?", "상품의 환헤지 여부, 비용과 원금손실 가능성을 이해했는가?"];
+  const questions = perspective.questions;
   const memo = usable ? [
     "KOSPI × NASDAQ | 시장 분석 메모", `분석 기간: ${range} (${periodLabel}, 공통 관측일 ${rows.length}개)`,
     `통화 기준: ${basis}`, `수집 시각: ${updatedAt || "미확인"}`,
@@ -34,7 +41,7 @@ export function AnalysisPanel({ rows, currencyBasis, periodLabel, updatedAt, sta
     `KOSPI ${formatReturn(kReturn)}, NASDAQ ${formatReturn(nReturn)}. 수익률 차이 ${(kReturn! - nReturn!).toFixed(1)}%p.`,
     `연속 공통 관측일 수익률 상관계수 ${formatCorrelation(correlation)} (${Math.max(0, rows.length - 1)}개 구간).`,
     `공통 관측일 기준 최대 낙폭: KOSPI ${formatReturn(kDrawdown)}, NASDAQ ${formatReturn(nDrawdown)}.`,
-    "", audience === "rm" ? "기업금융 RM 상담 전 확인할 질문" : "개인고객 상담 전 확인할 질문",
+    "", perspective.heading,
     ...questions.map((question, index) => `${index + 1}. ${question}`),
     "", "해석의 범위",
     "가격지수의 과거 성과이며 투자상품의 실현 수익률이나 미래 수익률 예측이 아닙니다.",
@@ -55,10 +62,22 @@ export function AnalysisPanel({ rows, currencyBasis, periodLabel, updatedAt, sta
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
+  async function downloadPdf() {
+    setPdfBusy(true); setPdfStatus("");
+    try {
+      const { createMarketPdf, fetchReportFont } = await import("../../lib/report");
+      const font = await fetchReportFont();
+      const pdf = createMarketPdf({ rows, currencyBasis, periodLabel, perspective: audience, commentary, note: selectedNote, scenario, updatedAt, stale, failedSymbols }, font);
+      pdf.save(`market-report-${rows.at(-1)?.month}-${audience}.pdf`);
+      setPdfStatus("한 장 리포트 다운로드를 시작했습니다.");
+    } catch (error) { setPdfStatus(error instanceof Error ? error.message : "PDF 저장 중 오류가 발생했습니다."); }
+    finally { setPdfBusy(false); }
+  }
+
   return (
     <section className="analysis-panel" aria-labelledby="analysis-heading">
       <div className="analysis-heading">
-        <div><p className="eyebrow">Risk & Banking Brief</p><h2 id="analysis-heading">수익률 다음에 확인할 것</h2></div>
+        <div><p className="eyebrow">Risk & Research Brief</p><h2 id="analysis-heading">수익률 다음에 확인할 것</h2></div>
         <p className="muted">{range}<br />{usable && `${rows.length}개 공통 관측일 · ${basis}`}</p>
       </div>
       <div className="risk-grid">
@@ -82,15 +101,21 @@ export function AnalysisPanel({ rows, currencyBasis, periodLabel, updatedAt, sta
         </ResponsiveContainer></div>
       ) : <div className="empty-note">이동 상관계수에는 최소 21개 공통 관측일과 수익률 변동이 필요합니다. 더 긴 기간을 선택해 주세요.</div>}
       <div className="analysis-heading memo-heading">
-        <div><p className="eyebrow">From Data to Conversation</p><h3>관측 사실과 상담 질문을 메모로</h3></div>
-        <div className="memo-actions" role="group" aria-label="분석 메모 상담 유형">
-          <button aria-pressed={audience === "rm"} onClick={() => setAudience("rm")}>기업금융 RM</button>
-          <button aria-pressed={audience === "personal"} onClick={() => setAudience("personal")}>개인고객</button>
+        <div><p className="eyebrow">From Data to Conversation</p><h3>관측 사실에서 다음 질문으로</h3></div>
+        <div className="memo-actions" role="group" aria-label="분석 메모 관점">
+          {perspectives.map((item) => <button key={item.key} aria-pressed={audience === item.key} onClick={() => setAudience(item.key)}>{item.label}</button>)}
         </div>
       </div>
-      <label htmlFor="market-memo" className="muted">현재 선택한 기간·통화의 분석 초안입니다. 고객 정보에 따른 판단과 확인 내용을 보완해 활용하세요.</label>
+      <label htmlFor="market-memo" className="muted">현재 선택한 기간·통화의 분석 초안입니다. 선택한 관점에서 해석과 확인 내용을 보완해 활용하세요.</label>
       <textarea id="market-memo" className="market-memo" value={memo} readOnly rows={12} />
       <button className="download-memo" disabled={!usable} onClick={downloadMemo}>분석 메모 내려받기</button>
+      <div id="report-export" className="report-export">
+        <p className="eyebrow">One-page Report</p><h3>차트와 나의 해석을 한 장으로</h3>
+        <label className="field">리포트용 해석 (300자 이내)<textarea rows={4} maxLength={300} value={commentary} placeholder="선택한 기간에서 확인한 사실, 자신의 해석과 남은 질문을 요약하세요." onChange={(e) => setCommentary(e.target.value)} /><span className="muted">{commentary.length}/300자 · 이 입력은 PDF에 포함됩니다.</span></label>
+        <p className="muted">연결 이슈: {selectedNote ? `${selectedNote.date} · ${selectedNote.title}` : "미선택 — 아래 이슈 노트에서 연결할 수 있습니다."}<br />시나리오: {scenario?.title || "입력값 확인 필요"}</p>
+        <button className="download-memo" disabled={!usable || pdfBusy} onClick={downloadPdf}>{pdfBusy ? "PDF 만드는 중…" : "분석 리포트 PDF 저장"}</button>
+        <p role="status" className="muted">{pdfStatus}</p>
+      </div>
       <details className="methodology"><summary>계산 방법과 데이터의 한계</summary>
         <ul>
           <li>지수화: 현재 값 ÷ 공통 시작일 값 × 100. 수익률: (종료 값 ÷ 시작 값 − 1) × 100.</li>

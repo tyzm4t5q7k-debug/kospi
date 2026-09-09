@@ -7,7 +7,15 @@
     "strict": true,
     "outDir": "../.test-build",
     "rootDir": "../lib",
-    "types": ["node"]
+    "types": [
+      "node"
+    ]
   },
-  "include": ["../lib/analytics.ts", "../lib/market.ts"]
+  "include": [
+    "../lib/analytics.ts",
+    "../lib/market.ts",
+    "../lib/scenarios.ts",
+    "../lib/research.ts",
+    "../lib/report.ts"
+  ]
 }
