@@ -17,6 +17,7 @@ import {
   ReferenceLine
 } from "recharts";
 import { RefreshCcw } from "lucide-react";
+import { PortfolioIntro, PortfolioStudies } from "./components/portfolio-studies";
 import { ScenarioLab } from "./components/scenario-lab";
 import { ResearchNotebook } from "./components/research-notebook";
 import { chartAnnotations, type ResearchNote } from "../lib/research";
@@ -200,7 +201,7 @@ export default function Page() {
           <div>
             <p style={styles.subText}>Financial Market Portfolio</p>
             <h1 style={styles.title}>KOSPI × NASDAQ Coupling Lab</h1>
-            <p style={styles.ownerText}>Built by Seunghyun Kim</p>
+            <p style={styles.ownerText}>김승현 · AI를 활용한 금융 분석 프로젝트</p>
           </div>
 
           <button onClick={loadData} disabled={loading} style={styles.refreshButton}>
@@ -209,13 +210,15 @@ export default function Page() {
           </button>
         </nav>
 
-        <nav className="section-links" aria-label="포트폴리오 섹션"><a href="#market-chart">시장 비교</a><a href="#scenarios">시나리오 계산</a><a href="#research-notes">이슈 노트</a><a href="#report-export">PDF 리포트</a></nav>
-        <section style={styles.hero}>
+        <nav className="section-links" aria-label="포트폴리오 섹션"><a href="#case-studies">대표 분석 3편</a><a href="#live-market">최신 시장 비교</a><a href="#scenarios">시나리오 계산</a><a href="#research-notes">이슈 노트</a><a href="#report-export">현재 화면 PDF</a></nav>
+        <PortfolioIntro />
+        <PortfolioStudies />
+        <section id="live-market" style={styles.hero}>
           <div style={styles.heroMain}>
             <p style={styles.badge}>Yahoo Finance · 완료된 일별 관측치</p>
 
             <h2 style={styles.heroTitle}>
-              코스피와 나스닥, 그리고 섹터별 테마주의 연동성
+              최신 시장 데이터를 직접 비교합니다
             </h2>
 
             <p style={styles.description}>
@@ -906,7 +909,7 @@ export default function Page() {
           <div style={styles.aboutGrid}>
             <div style={styles.aboutCard}>
               <h3>시장 이해도</h3>
-              <p>한국 시장이 미국 기술주, 금리, 환율, 글로벌 섹터 모멘텀에 어떤 영향을 받는지 시각적으로 확인합니다.</p>
+              <p>한국과 미국 시장의 수익률, 금리·환율 변화가 같은 기간에 어떻게 관측되는지 비교하고 원인에 대한 가설과 구분합니다.</p>
             </div>
 
             <div style={styles.aboutCard}>
@@ -1344,4 +1347,3 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 700
   }
 };
-

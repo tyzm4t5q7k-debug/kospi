@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "KOSPI × NASDAQ Coupling Lab | 김승현",
-  description: "시장 수익률, 환율과 하락 위험을 함께 비교하고 은행 상담 질문으로 연결하는 김승현의 금융시장 분석 포트폴리오"
+  description: "시장 동조화, 해외투자의 환율 효과, 기업 현금흐름을 세 가지 사례로 분석하는 김승현의 금융 포트폴리오. 대표 분석 보고서와 최신 시장 비교 도구를 제공합니다."
 };
 
 export default function RootLayout({
@@ -19,4 +19,3 @@ export default function RootLayout({
     </html>
   );
 }
-

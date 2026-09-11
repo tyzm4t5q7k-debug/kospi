@@ -16,6 +16,7 @@
     "../lib/market.ts",
     "../lib/scenarios.ts",
     "../lib/research.ts",
-    "../lib/report.ts"
+    "../lib/report.ts",
+    "../lib/case-studies.ts"
   ]
 }
