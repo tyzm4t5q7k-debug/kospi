@@ -18,6 +18,7 @@ import {
 } from "recharts";
 import { RefreshCcw } from "lucide-react";
 import { PortfolioIntro, PortfolioStudies } from "./components/portfolio-studies";
+import { ContestProject } from "./components/contest-project";
 import { ScenarioLab } from "./components/scenario-lab";
 import { ResearchNotebook } from "./components/research-notebook";
 import { chartAnnotations, type ResearchNote } from "../lib/research";
@@ -200,7 +201,7 @@ export default function Page() {
         <nav style={styles.nav}>
           <div>
             <p style={styles.subText}>Financial Market Portfolio</p>
-            <h1 style={styles.title}>KOSPI × NASDAQ Coupling Lab</h1>
+            <h1 style={styles.title}>김승현의 금융·데이터 분석 포트폴리오</h1>
             <p style={styles.ownerText}>김승현 · AI를 활용한 금융 분석 프로젝트</p>
           </div>
 
@@ -210,7 +211,8 @@ export default function Page() {
           </button>
         </nav>
 
-        <nav className="section-links" aria-label="포트폴리오 섹션"><a href="#case-studies">대표 분석 3편</a><a href="#live-market">최신 시장 비교</a><a href="#scenarios">시나리오 계산</a><a href="#research-notes">이슈 노트</a><a href="#report-export">현재 화면 PDF</a></nav>
+        <nav className="section-links" aria-label="포트폴리오 섹션"><a href="#contest-project">상권 분석 프로젝트</a><a href="#case-studies">시장·환율 분석 3편</a><a href="#live-market">최신 시장 비교</a><a href="#scenarios">시나리오 계산</a><a href="#research-notes">이슈 노트</a><a href="#report-export">현재 화면 PDF</a></nav>
+        <ContestProject />
         <PortfolioIntro />
         <PortfolioStudies />
         <section id="live-market" style={styles.hero}>

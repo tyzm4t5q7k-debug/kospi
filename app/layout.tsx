@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "KOSPI × NASDAQ Coupling Lab | 김승현",
-  description: "시장 동조화, 해외투자의 환율 효과, 기업 현금흐름을 세 가지 사례로 분석하는 김승현의 금융 포트폴리오. 대표 분석 보고서와 최신 시장 비교 도구를 제공합니다."
+  title: "김승현 | 금융·데이터 분석 포트폴리오",
+  description: "소비 변화 분해를 통한 상권 마케팅 실험 설계와 시장·환율·현금흐름 분석. 분석 방법, 서비스 기획, 가상 시연 및 최신 시장 비교 도구를 소개합니다."
 };
 
 export default function RootLayout({

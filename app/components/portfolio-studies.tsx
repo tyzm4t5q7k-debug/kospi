@@ -10,11 +10,11 @@ const reportPath = "/reports/kim-seunghyun-finance-portfolio.pdf";
 export function PortfolioIntro() {
   return <section className="portfolio-intro" aria-labelledby="portfolio-heading">
     <div className="portfolio-intro-copy">
-      <p className="eyebrow">김승현 · 경제통상학 · 금융 분석 포트폴리오</p>
+      <p className="eyebrow">시장·환율 분석 · KOSPI × NASDAQ Coupling Lab</p>
       <h2 id="portfolio-heading">시장 수익률을 비교하고,<br />환율과 현금흐름으로 설명합니다.</h2>
       <p className="portfolio-lede">한국과 미국 시장의 동행 정도, 해외투자의 원화 성과, 기업의 외화결제와 이자 부담을 세 가지 사례로 분석했습니다. 관측 결과에서 출발해 금융 업무에서 확인할 질문으로 연결합니다.</p>
       <div className="portfolio-actions">
-        <a className="portfolio-primary" href={reportPath} download><ArrowDownToLine size={18} aria-hidden="true" /> 제출용 분석 보고서 · PDF</a>
+        <a className="portfolio-primary" href={reportPath} download><ArrowDownToLine size={18} aria-hidden="true" /> 시장·환율 분석 보고서 · PDF</a>
         <a className="portfolio-secondary" href="#case-studies">대표 분석 읽기 <ArrowUpRight size={18} aria-hidden="true" /></a>
         <a className="portfolio-secondary" href="#live-market">최신 시장 직접 비교</a>
       </div>

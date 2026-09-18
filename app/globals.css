@@ -117,3 +117,21 @@ section[id], div[id] { scroll-margin-top: 20px; }
 .study-reproducibility h3 { margin: 0; font-size: 20px; }
 @media (max-width: 800px) { .portfolio-intro { grid-template-columns: 1fr; gap: 20px; } .portfolio-findings { grid-template-columns: 1fr; } .contribution-note dl { grid-template-columns: 1fr; gap: 8px; } }
 @media (max-width: 600px) { .study-metrics { grid-template-columns: 1fr; gap: 20px; } .study-metrics > div { border-bottom: 1px solid #38536d; padding-bottom: 16px; } .study-metrics > div:last-child { border: 0; padding: 0; } .study-header { gap: 12px; } .study-chart { height: 230px; } .study-article { padding: 20px; } .study-table th, .study-table td { padding: 10px 8px; } }
+.contest-project { background: #10253c; border: 1px solid #42617c; border-top: 3px solid #5eead4; border-radius: 20px; padding: clamp(22px, 4vw, 44px); margin: 12px 0 44px; }
+.contest-project h2 { font-size: clamp(28px, 4vw, 42px); line-height: 1.4; letter-spacing: -.03em; margin: 14px 0; word-break: keep-all; }
+.contest-project h3 { font-size: 20px; line-height: 1.5; margin: 12px 0; }
+.contest-project p, .contest-project li { line-height: 1.85; }
+.contest-lede { max-width: 850px; color: #dceafa; font-size: 18px; }
+.contest-purpose { border-left: 3px solid #5eead4; padding-left: 20px; margin: 30px 0; }
+.contest-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; padding: 0; list-style: none; margin: 32px 0; }
+.contest-steps li { border-top: 1px solid #52708e; padding-top: 16px; }
+.contest-steps p, .contest-columns { color: #cbd8e7; }
+.contest-columns, .contest-demo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+.contest-columns ul { padding-left: 22px; }
+.contest-columns li { margin-bottom: 8px; }
+.contest-demo { background: #172f48; border: 1px solid #52708e; border-radius: 16px; padding: clamp(18px, 3vw, 28px); margin-top: 30px; }
+.contest-demo-grid { margin: 24px 0; align-items: start; }
+.contest-demo-result { padding: 18px; background: #0d2236; border-radius: 12px; }
+.contest-demo-result p:first-child { margin-top: 0; }
+@media (max-width: 900px) { .contest-steps { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px) { .contest-steps, .contest-columns, .contest-demo-grid { grid-template-columns: 1fr; } }

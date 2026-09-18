@@ -17,6 +17,7 @@
     "../lib/scenarios.ts",
     "../lib/research.ts",
     "../lib/report.ts",
-    "../lib/case-studies.ts"
+    "../lib/case-studies.ts",
+    "../lib/experiment-demo.ts"
   ]
 }
