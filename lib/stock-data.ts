@@ -15,6 +15,21 @@ let token: Token | undefined;
 let tokenFlight: Promise<string> | undefined;
 const cache = new Map<string, { expires: number; value: unknown }>();
 const flights = new Map<string, Promise<unknown>>();
+const nextRequest = new Map<string, number>();
+async function paceRead(path: string) {
+  const group =
+    path === "/api/v1/candles"
+      ? "chart"
+      : path === "/api/v1/prices"
+        ? "quote"
+        : "flow";
+  const spacing = group === "chart" ? 60 : group === "quote" ? 80 : 125;
+  const now = Date.now();
+  const slot = Math.max(now, nextRequest.get(group) ?? now);
+  nextRequest.set(group, slot + spacing);
+  if (slot > now)
+    await new Promise((resolve) => setTimeout(resolve, slot - now));
+}
 export const tossConfigured = () =>
   Boolean(
     process.env.TOSS_ACCESS_TOKEN ||
@@ -80,6 +95,7 @@ export async function tossRead(
   path: string,
   params: Record<string, string> = {},
   retry = true,
+  rateRetries = 0,
 ) {
   if (
     !/^\/api\/v1\/(prices|candles|stocks(?:\/[A-Z0-9]{6}\/(investor-trading|short-selling|credit-trades|securities-lending))?)$/.test(
@@ -88,6 +104,7 @@ export async function tossRead(
   )
     throw new Error("허용되지 않은 조회");
   const usedToken = await accessToken();
+  await paceRead(path);
   const response = await fetch(
     `${TOSS}${path}?${new URLSearchParams(params)}`,
     {
@@ -98,7 +115,20 @@ export async function tossRead(
   );
   if (response.status === 401 && retry && !process.env.TOSS_ACCESS_TOKEN) {
     if (token?.value === usedToken) token = undefined;
-    return tossRead(path, params, false);
+    return tossRead(path, params, false, rateRetries);
+  }
+  if (response.status === 429 && rateRetries < 2) {
+    const header = response.headers.get("Retry-After");
+    const seconds = header === null ? NaN : Number(header);
+    const wait =
+      Number.isFinite(seconds) && seconds >= 0
+        ? seconds * 1000
+        : 1000 * 2 ** rateRetries;
+    // Long upstream cooldowns fail visibly instead of holding a serverless request indefinitely.
+    if (wait <= 5000) {
+      await new Promise((resolve) => setTimeout(resolve, wait + 50));
+      return tossRead(path, params, retry, rateRetries + 1);
+    }
   }
   if (!response.ok) {
     throw new Error(
@@ -274,6 +304,8 @@ async function getFlows(code: string) {
         : [],
     );
     const names = ["투자자별 수급", "공매도", "신용잔고", "대차잔고"];
+    if (!groups.length)
+      throw new Error("수급 조회 실패 — 잠시 후 다시 조회해 주세요");
     return {
       flows: mergeFlows(groups),
       notices: responses.flatMap((r, i) =>
@@ -299,7 +331,10 @@ export async function getStockData(
           return null;
         }),
         includeFlows
-          ? getFlows(code)
+          ? getFlows(code).catch(() => ({
+              flows: [] as Flow[],
+              notices: ["수급 조회 실패 — 잠시 후 다시 조회해 주세요"],
+            }))
           : Promise.resolve({ flows: [], notices: [] }),
       ]);
       return {

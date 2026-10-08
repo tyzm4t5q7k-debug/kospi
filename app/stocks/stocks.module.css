@@ -1139,3 +1139,55 @@
     animation: none;
   }
 }
+.strategyList {
+  display: grid;
+  gap: 10px;
+  margin: 20px 0;
+}
+.strategyDetails {
+  border: 1px solid #2b3545;
+  border-radius: 10px;
+  padding: 13px;
+}
+.strategyDetails summary {
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.strategyDetails summary strong {
+  float: right;
+  color: #67e8d2;
+  margin-left: 8px;
+}
+.strategyDetails ul {
+  padding: 8px 0 0;
+  list-style: none;
+  font-size: 11px;
+  line-height: 1.9;
+  color: #8e9aaa;
+}
+.strategyDetails li[data-pass="true"] {
+  color: #9de5d4;
+}
+.signalMetrics {
+  font-size: 11px;
+  margin: 20px 0;
+}
+.signalMetrics > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+}
+.signalMetrics dt {
+  color: #94a3b8;
+}
+.signalMetrics dd {
+  margin: 0;
+  text-align: right;
+}
+.flowStatus {
+  color: #9de5d4;
+  display: block;
+  margin: 16px 0 8px;
+}

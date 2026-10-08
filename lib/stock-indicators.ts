@@ -1,4 +1,4 @@
-import type { Candle } from "./stock-types";
+import type { Candle, Flow } from "./stock-types";
 type N = number | null;
 type Series = N[];
 export type Indicator = {
@@ -629,50 +629,245 @@ export type Signal = {
   risks: string[];
   date: string | null;
   atr: number | null;
+  strategies: StrategySignal[];
+  flow: FlowSignal;
+  eligible: boolean;
+  metrics: {
+    adx: N;
+    atrPercent: N;
+    volumeRatio: N;
+    resistance: N;
+    support: N;
+    bandwidthPercentile: N;
+  };
 };
-export function evaluateSignal(candles: Candle[], today: string): Signal {
+export type StrategySignal = {
+  name: string;
+  checks: { label: string; passed: boolean }[];
+  matched: number;
+};
+export type FlowSignal = {
+  status: "동반 순매수" | "동반 순매도" | "엇갈린 수급" | "자료 부족";
+  days: number;
+  start: string | null;
+  end: string | null;
+  foreigner: N;
+  institution: N;
+  shortPercent: N;
+  shortDate: string | null;
+  creditChange: N;
+  lendingChange: N;
+  balancePeriod: string | null;
+};
+export function summarizeFlow(bars: Candle[], flows: Flow[]): FlowSignal {
+  // Require every one of the last five completed sessions; missing is never neutral/zero.
+  const last = bars.slice(-5);
+  const byDate = new Map(flows.map((f) => [f.date, f]));
+  const records = last.map((b) => byDate.get(b.date));
+  const valid = records.filter(
+    (f): f is Flow => !!f && f.foreigner !== null && f.institution !== null,
+  );
+  const complete = last.length === 5 && valid.length === 5;
+  const foreigner = complete
+    ? valid.reduce((s, f) => s + f.foreigner!, 0)
+    : null;
+  const institution = complete
+    ? valid.reduce((s, f) => s + f.institution!, 0)
+    : null;
+  let latestShortIndex = -1;
+  records.forEach((f, i) => {
+    if (f?.short != null && last[i].volume > 0) latestShortIndex = i;
+  });
+  const shortBar = last[latestShortIndex];
+  const short = records[latestShortIndex];
+  const balanceRows = records.filter(
+    (f): f is Flow => !!f && f.credit !== null && f.lending !== null,
+  );
+  const first = balanceRows.at(0),
+    end = balanceRows.at(-1);
+  const percent = (a: N | undefined, b: N | undefined): N =>
+    a != null && b != null && a > 0 ? (b / a - 1) * 100 : null;
+  return {
+    status: !complete
+      ? "자료 부족"
+      : foreigner! > 0 && institution! > 0
+        ? "동반 순매수"
+        : foreigner! < 0 && institution! < 0
+          ? "동반 순매도"
+          : "엇갈린 수급",
+    days: valid.length,
+    start: last.at(0)?.date ?? null,
+    end: last.at(-1)?.date ?? null,
+    foreigner,
+    institution,
+    shortPercent:
+      short && shortBar ? (short.short! / shortBar.volume) * 100 : null,
+    shortDate: short?.date ?? null,
+    creditChange:
+      balanceRows.length >= 2 ? percent(first?.credit, end?.credit) : null,
+    lendingChange:
+      balanceRows.length >= 2 ? percent(first?.lending, end?.lending) : null,
+    balancePeriod:
+      balanceRows.length >= 2 ? `${first!.date} → ${end!.date}` : null,
+  };
+}
+export function evaluateSignal(
+  candles: Candle[],
+  today: string,
+  flows: Flow[] = [],
+): Signal {
   // Completed days only. Forward-shifted visual indicators never enter the score.
   const bars = candles.filter((b) => b.date < today);
   const rows = calculateIndicators(bars, bars[0]?.date ?? "");
   const r = rows.at(-1),
     prev = rows.at(-2);
-  if (!r || !prev || bars.length < 61)
+  const flow = summarizeFlow(bars, flows);
+  const emptyMetrics = {
+    adx: null,
+    atrPercent: null,
+    volumeRatio: null,
+    resistance: null,
+    support: null,
+    bandwidthPercentile: null,
+  };
+  if (!r || !prev || bars.length < 90)
     return {
       score: null,
       label: "자료 부족",
       reasons: [],
-      risks: ["완료된 일봉 61개 이상 필요"],
+      risks: ["완료된 일봉 90개 이상 필요"],
       date: r?.date ?? null,
       atr: null,
+      strategies: [],
+      flow,
+      eligible: false,
+      metrics: emptyMetrics,
     };
-  const reasons: string[] = [],
-    risks: string[] = [];
-  let score = 0;
-  const n = (key: string) => r[key] as N;
-  const award = (yes: boolean, points: number, reason: string) => {
-    if (yes) {
-      score += points;
-      reasons.push(reason);
-    }
-  };
-  award(
-    r.close > n("ma20")! && n("ma20")! > n("ma60")!,
-    25,
-    "종가 > 20일선 > 60일선",
-  );
-  award(n("ma20")! > (prev.ma20 as number), 15, "20일 이동평균 상승");
-  award(n("rsi")! >= 45 && n("rsi")! <= 65, 20, "RSI 45~65 구간");
-  award(n("macd")! > n("signal")!, 20, "MACD가 신호선 상회");
+  const risks: string[] = [];
+  const n = (key: string) => r[key] as number;
+  const p = (key: string) => prev[key] as number;
   const avgVol = bars.slice(-21, -1).reduce((s, b) => s + b.volume, 0) / 20;
-  award(
-    avgVol > 0 && r.volume >= avgVol * 1.2 && r.close > prev.close,
-    20,
-    "상승일 거래량이 이전 20일 평균의 1.2배 이상",
-  );
-  if (n("rsi")! > 70) risks.push("RSI 70 초과: 과열 가능성");
-  if (r.close < n("ma60")!) risks.push("종가가 60일선 아래");
-  if (n("atr")! / r.close > 0.05)
-    risks.push("ATR이 종가의 5% 초과: 높은 변동성");
+  const volumeRatio = avgVol > 0 ? r.volume / avgVol : null;
+  const prior20 = bars.slice(-21, -1);
+  const resistance = Math.max(...prior20.map((b) => b.high));
+  const support = Math.min(...prior20.map((b) => b.low));
+  const widths = rows
+    .slice(-62, -2)
+    .map((v) => v.bandwidth as N)
+    .filter((v): v is number => v !== null && Number.isFinite(v));
+  // Compare yesterday's squeeze to the preceding 60 sessions, excluding today's breakout.
+  const bandwidthPercentile =
+    widths.length === 60
+      ? (widths.filter((v) => v <= p("bandwidth")).length / 60) * 100
+      : null;
+  const strategy = (
+    name: string,
+    checks: [string, boolean][],
+  ): StrategySignal => ({
+    name,
+    checks: checks.map(([label, passed]) => ({ label, passed })),
+    matched: checks.filter(([, yes]) => yes).length,
+  });
+  const strategies = [
+    strategy("추세 지속", [
+      [
+        "종가 > MA20 > MA60, MA20 상승",
+        r.close > n("ma20") && n("ma20") > n("ma60") && n("ma20") > p("ma20"),
+      ],
+      ["ADX 20 이상 · +DI > -DI", n("adx") >= 20 && n("plusDI") > n("minusDI")],
+      [
+        "MACD 히스토그램 양수·증가, RSI 40~70",
+        n("histogram") > 0 &&
+          n("histogram") > p("histogram") &&
+          n("rsi") >= 40 &&
+          n("rsi") <= 70,
+      ],
+      [
+        "거래량 평균 이상 · OBV 5봉 전보다 상승",
+        volumeRatio !== null &&
+          volumeRatio >= 1 &&
+          n("obv") > (rows.at(-6)!.obv as number),
+      ],
+    ]),
+    strategy("변동성 수축 후 돌파", [
+      ["종가가 이전 20봉 최고가 돌파", r.close > resistance],
+      [
+        "전일 BB 폭이 앞선 60봉 하위 30%",
+        bandwidthPercentile !== null && bandwidthPercentile <= 30,
+      ],
+      [
+        "종가 > MA60 · +DI > -DI",
+        r.close > n("ma60") && n("plusDI") > n("minusDI"),
+      ],
+      [
+        "거래량 1.5배 이상 · MFI 50~80",
+        volumeRatio !== null &&
+          volumeRatio >= 1.5 &&
+          n("mfi") >= 50 &&
+          n("mfi") <= 80,
+      ],
+    ]),
+    strategy("상승 추세 눌림목", [
+      [
+        "MA20 > MA60 · 종가 > MA60",
+        n("ma20") > n("ma60") && r.close > n("ma60"),
+      ],
+      [
+        "최근 5봉 MA20 접근 후 MA20 위 양봉",
+        rows
+          .slice(-6, -1)
+          .some(
+            (v) =>
+              v.low <= (v.ma20 as number) * 1.02 && v.low >= (v.ma60 as number),
+          ) &&
+          r.close >= n("ma20") &&
+          r.close > r.open,
+      ],
+      [
+        "RSI 40~65 상승 · 스토캐스틱 상향 교차",
+        n("rsi") >= 40 &&
+          n("rsi") <= 65 &&
+          n("rsi") > p("rsi") &&
+          p("stochK") <= p("stochD") &&
+          p("stochK") <= 50 &&
+          n("stochK") > n("stochD"),
+      ],
+      [
+        "거래량 평균의 0.8배 이상 · OBV 상승",
+        volumeRatio !== null && volumeRatio >= 0.8 && n("obv") > p("obv"),
+      ],
+    ]),
+  ];
+  const best = [...strategies].sort((a, b) => b.matched - a.matched)[0];
+  const reasons = best.checks
+    .filter((c) => c.passed)
+    .map((c) => `${best.name}: ${c.label}`);
+  const atrPercent = (n("atr") / r.close) * 100;
+  if (atrPercent > 5) risks.push("ATR/종가 5% 초과: 변동성 위험으로 후보 제외");
+  if (n("rsi") > 75) risks.push("RSI 75 초과: 과열로 후보 제외");
+  if (n("atr") > 0 && r.close - n("ma20") > 2 * n("atr"))
+    risks.push("MA20에서 2ATR 이상 이격: 추격 위험으로 후보 제외");
+  if (r.volume <= 0 || avgVol <= 0) risks.push("거래량 부족으로 후보 제외");
+  const avgTurnover = prior20.reduce((s, b) => s + b.close * b.volume, 0) / 20;
+  if (avgTurnover < 1e9)
+    risks.push("20일 평균 추정 거래대금 10억원 미만: 유동성 기준 미달");
+  const blocked = risks.length > 0;
+  if (flow.status === "동반 순매도")
+    risks.push("최근 5거래일 외국인·기관 동반 순매도: 후보 제외");
+  if (flow.status === "자료 부족")
+    risks.push(
+      `완료된 최근 5거래일 수급 ${flow.days}/5개: 매수 검토 판정 보류`,
+    );
+  const eligible =
+    best.matched === 4 && !blocked && flow.status === "동반 순매수";
+  const metrics = {
+    adx: n("adx"),
+    atrPercent,
+    volumeRatio,
+    resistance,
+    support,
+    bandwidthPercentile,
+  };
   const elapsed = (Date.parse(today) - Date.parse(r.date)) / 86400000;
   if (elapsed > 7)
     return {
@@ -682,13 +877,27 @@ export function evaluateSignal(candles: Candle[], today: string): Signal {
       risks: [...risks, "최종 일봉이 7일 이상 지연되어 점수 보류"],
       date: r.date,
       atr: n("atr"),
+      strategies,
+      flow,
+      eligible: false,
+      metrics,
     };
   return {
-    score,
-    label: score >= 80 ? "매수 검토" : score >= 55 ? "관찰" : "대기",
+    score: best.matched * 25,
+    label: eligible
+      ? "매수 검토"
+      : blocked || flow.status === "동반 순매도"
+        ? "위험 조건 · 제외"
+        : best.matched === 4
+          ? "기술조건 일치 · 수급 대기"
+          : "조건 관찰",
     reasons,
     risks,
     date: r.date,
     atr: n("atr"),
+    strategies,
+    flow,
+    eligible,
+    metrics,
   };
 }

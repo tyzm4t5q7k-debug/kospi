@@ -22,15 +22,14 @@ async function scan() {
       while (i < STOCKS.length) {
         const stock = STOCKS[i++];
         try {
-          const data = await getStockData(
-            stock.code,
-            stock.market,
-            "1d",
-            false,
-          );
+          const data = await getStockData(stock.code, stock.market, "1d", true);
           rows.push({
             stock,
-            signal: evaluateSignal(data.candles, koreanDate(Date.now())),
+            signal: evaluateSignal(
+              data.candles,
+              koreanDate(Date.now()),
+              data.flows,
+            ),
             source: data.source,
             price: data.candles.at(-1)!.close,
           });
@@ -40,7 +39,11 @@ async function scan() {
       }
     }),
   );
-  rows.sort((a, b) => (b.signal.score ?? -1) - (a.signal.score ?? -1));
+  rows.sort(
+    (a, b) =>
+      Number(b.signal.eligible) - Number(a.signal.eligible) ||
+      (b.signal.score ?? -1) - (a.signal.score ?? -1),
+  );
   return { at: Date.now(), rows, failed };
 }
 export async function GET() {
@@ -54,7 +57,7 @@ export async function GET() {
     {
       ...saved,
       universe: STOCKS.length,
-      method: "완료된 일봉 · 조건 충족 점수",
+      method: "일봉 스윙 · 3전략 조건 · 5거래일 수급 · 위험 필터",
       asOf: new Date(saved.at).toISOString(),
     },
     { headers: { "Cache-Control": "no-store" } },

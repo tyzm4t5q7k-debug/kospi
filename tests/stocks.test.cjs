@@ -5,6 +5,7 @@ const {
   ema,
   calculateIndicators,
   evaluateSignal,
+  summarizeFlow,
   volumeProfile,
 } = require("../.test-build/stock-indicators.js");
 const {
@@ -16,7 +17,177 @@ const {
   parseTossCandles,
   parseYahoo,
   mergeFlows,
+  tossRead,
 } = require("../.test-build/stock-data.js");
+test("read-only Toss requests retry a bounded 429 and never permit an order path", async () => {
+  const originalFetch = global.fetch;
+  const originalToken = process.env.TOSS_ACCESS_TOKEN;
+  process.env.TOSS_ACCESS_TOKEN = "unit-test-token";
+  let calls = 0;
+  global.fetch = async () =>
+    ++calls === 1
+      ? new Response("", { status: 429, headers: { "Retry-After": "0" } })
+      : Response.json({
+          result: [{ symbol: "005930", lastPrice: 100, currency: "KRW" }],
+        });
+  try {
+    const rows = await tossRead("/api/v1/prices", { symbols: "005930" });
+    assert.equal(calls, 2);
+    assert.equal(rows[0].lastPrice, 100);
+    await assert.rejects(
+      () => tossRead("/api/v1/orders"),
+      /허용되지 않은 조회/,
+    );
+    assert.equal(calls, 2);
+  } finally {
+    global.fetch = originalFetch;
+    if (originalToken === undefined) delete process.env.TOSS_ACCESS_TOKEN;
+    else process.env.TOSS_ACCESS_TOKEN = originalToken;
+  }
+});
+function strategyFixture() {
+  let state = 16,
+    close = 100;
+  const bars = Array.from({ length: 120 }, (_, i) => {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    const open = close;
+    close += 0.3 + (state / 2 ** 32 - 0.5) * 4;
+    const time = Date.parse("2026-01-01") + i * 86400000;
+    return {
+      time,
+      date: koreanDate(time),
+      open,
+      high: Math.max(open, close) + 1,
+      low: Math.min(open, close) - 1,
+      close,
+      volume: 20000000 + i * 10000,
+    };
+  });
+  const flows = bars.slice(-5).map((b) => ({
+    date: b.date,
+    updatedAt: b.date,
+    foreigner: 100,
+    institution: 200,
+    individual: -300,
+    credit: null,
+    lending: null,
+    short: null,
+    foreignHolding: null,
+    foreignRate: null,
+  }));
+  return { bars, flows, today: koreanDate(bars.at(-1).time + 86400000) };
+}
+test("complete strategy still requires confirmed five-session supportive flow", () => {
+  const { bars, flows, today } = strategyFixture();
+  const ready = evaluateSignal(bars, today, flows);
+  assert.equal(ready.score, 100);
+  assert.equal(ready.eligible, true);
+  assert.equal(
+    ready.strategies.find((s) => s.name === "상승 추세 눌림목").matched,
+    4,
+  );
+  const missing = evaluateSignal(bars, today, flows.slice(1));
+  assert.equal(missing.score, 100);
+  assert.equal(missing.eligible, false);
+  assert.equal(missing.flow.status, "자료 부족");
+  const selling = evaluateSignal(
+    bars,
+    today,
+    flows.map((f) => ({ ...f, foreigner: -100, institution: -200 })),
+  );
+  assert.equal(selling.eligible, false);
+  assert.equal(selling.flow.status, "동반 순매도");
+  assert.match(selling.label, /제외/);
+});
+test("future and unfinished flow observations never change a completed-day signal", () => {
+  const { bars, flows, today } = strategyFixture();
+  const expected = evaluateSignal(bars, today, flows);
+  assert.deepEqual(
+    evaluateSignal(bars, today, [
+      ...flows,
+      { ...flows[0], date: today, foreigner: -1e12, institution: -1e12 },
+    ]),
+    expected,
+  );
+});
+test("zero flow remains available and mixed, while null flow withholds the decision", () => {
+  const { bars, flows } = strategyFixture();
+  const zero = summarizeFlow(
+    bars,
+    flows.map((f) => ({ ...f, foreigner: 0, institution: 0 })),
+  );
+  assert.equal(zero.days, 5);
+  assert.equal(zero.foreigner, 0);
+  assert.equal(zero.status, "엇갈린 수급");
+  const missing = summarizeFlow(
+    bars,
+    flows.map((f, i) => (i ? f : { ...f, foreigner: null })),
+  );
+  assert.equal(missing.foreigner, null);
+  assert.equal(missing.status, "자료 부족");
+});
+test("breakout resistance and preceding squeeze exclude the current candle", () => {
+  const { bars, today } = strategyFixture();
+  const original = evaluateSignal(bars, today);
+  const changed = bars.map((b, i) =>
+    i < bars.length - 1
+      ? b
+      : {
+          ...b,
+          close: original.metrics.resistance + 10,
+          high: original.metrics.resistance + 11,
+        },
+  );
+  const signal = evaluateSignal(changed, today);
+  assert.equal(signal.metrics.resistance, original.metrics.resistance);
+  assert.equal(
+    signal.metrics.bandwidthPercentile,
+    original.metrics.bandwidthPercentile,
+  );
+  assert.equal(
+    signal.strategies.find((s) => s.name === "변동성 수축 후 돌파").checks[0]
+      .passed,
+    true,
+  );
+});
+test("illiquid stocks cannot qualify even when technical and flow conditions agree", () => {
+  const { bars, flows, today } = strategyFixture();
+  const lowVolume = evaluateSignal(
+    bars.map((b) => ({ ...b, volume: b.volume / 1e6 })),
+    today,
+    flows,
+  );
+  assert.equal(lowVolume.score, 100);
+  assert.equal(lowVolume.eligible, false);
+  assert.ok(lowVolume.risks.some((r) => r.includes("유동성")));
+});
+test("excessive ATR is an exclusion rather than a small score penalty", () => {
+  const { bars, flows, today } = strategyFixture();
+  const volatile = evaluateSignal(
+    bars.map((b) => ({ ...b, high: b.high + 30, low: b.low - 30 })),
+    today,
+    flows,
+  );
+  assert.ok(volatile.metrics.atrPercent > 5);
+  assert.equal(volatile.eligible, false);
+  assert.ok(volatile.risks.some((r) => r.includes("ATR/종가")));
+});
+test("flow context keeps dates and does not substitute absent balance observations", () => {
+  const { bars, flows } = strategyFixture();
+  const context = summarizeFlow(
+    bars,
+    flows.map((f, i) => ({
+      ...f,
+      short: 100,
+      credit: i === 4 ? 1000 : null,
+      lending: i === 4 ? 500 : null,
+    })),
+  );
+  assert.equal(context.shortDate, bars.at(-1).date);
+  assert.equal(context.shortPercent, (100 / bars.at(-1).volume) * 100);
+  assert.equal(context.creditChange, null);
+  assert.equal(context.lendingChange, null);
+});
 const bar = (close, i, volume = 100) => {
   const time = Date.parse("2026-01-01T00:00:00Z") + i * 86400000;
   return {

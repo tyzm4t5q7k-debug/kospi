@@ -53,6 +53,7 @@ const fmt = (n: unknown, digits = 0) =>
   typeof n === "number" && Number.isFinite(n)
     ? n.toLocaleString("ko-KR", { maximumFractionDigits: digits })
     : "—";
+const metric = (n: unknown) => fmt(n, 2);
 const compact = (n: number) =>
   Math.abs(n) >= 1e8
     ? `${fmt(n / 1e8, 1)}억`
@@ -266,28 +267,26 @@ export function StockLab() {
   );
   const visible = useMemo(
     () =>
-      rows
-        .slice(-bars)
-        .map((r) => ({
-          ...r,
-          display:
-            interval === "1d"
-              ? r.date
-              : new Date(r.time).toLocaleString("ko-KR", {
-                  timeZone: "Asia/Seoul",
-                  month: "2-digit",
-                  day: "2-digit",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  hour12: false,
-                }),
-        })),
+      rows.slice(-bars).map((r) => ({
+        ...r,
+        display:
+          interval === "1d"
+            ? r.date
+            : new Date(r.time).toLocaleString("ko-KR", {
+                timeZone: "Asia/Seoul",
+                month: "2-digit",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false,
+              }),
+      })),
     [rows, bars, interval],
   );
   const signal = useMemo(
     () =>
       interval === "1d" && data && !error
-        ? evaluateSignal(data.candles, koreanDate(Date.now()))
+        ? evaluateSignal(data.candles, koreanDate(Date.now()), data.flows)
         : null,
     [data, interval, error],
   );
@@ -905,20 +904,63 @@ export function StockLab() {
           <aside className={styles.insight}>
             <section className={styles.signalCard}>
               <p className={styles.eyebrow}>TECHNICAL SIGNAL</p>
-              <h2>지금의 기술적 신호</h2>
+              <h2>전략별 조건과 수급</h2>
               <div className={styles.score}>
-                <strong>{signal?.score ?? "—"}</strong>
-                <span>/ 100</span>
+                <strong>
+                  {signal?.score != null ? signal.score / 25 : "—"}
+                </strong>
+                <span>/ 4 조건</span>
               </div>
               <div className={styles.signalLabel}>
                 {signal?.label ??
                   (interval === "1m" ? "일봉에서 분석합니다" : "분석 대기")}
               </div>
               <p className={styles.scoreNote}>
-                조건 충족 점수입니다.
+                가장 많이 충족한 전략의 기술조건입니다.
                 <br />
-                상승 확률이나 기대 수익률이 아닙니다.
+                수급·위험은 별도로 확인합니다. 상승 확률이 아닙니다.
               </p>
+              <div className={styles.strategyList}>
+                {signal?.strategies.map((strategy) => (
+                  <details
+                    key={strategy.name}
+                    className={styles.strategyDetails}
+                  >
+                    <summary>
+                      {strategy.name}
+                      <strong>{strategy.matched}/4</strong>
+                    </summary>
+                    <ul>
+                      {strategy.checks.map((check) => (
+                        <li key={check.label} data-pass={check.passed}>
+                          {check.passed ? "✓" : "○"} {check.label}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                ))}
+              </div>
+              <dl className={styles.signalMetrics}>
+                <div>
+                  <dt>ADX · 추세 강도</dt>
+                  <dd>{metric(signal?.metrics.adx ?? null)}</dd>
+                </div>
+                <div>
+                  <dt>ATR / 종가</dt>
+                  <dd>{metric(signal?.metrics.atrPercent ?? null)}%</dd>
+                </div>
+                <div>
+                  <dt>거래량 / 이전 20일 평균</dt>
+                  <dd>{metric(signal?.metrics.volumeRatio ?? null)}배</dd>
+                </div>
+                <div>
+                  <dt>이전 20봉 저가 / 고가</dt>
+                  <dd>
+                    {metric(signal?.metrics.support ?? null)} /{" "}
+                    {metric(signal?.metrics.resistance ?? null)}
+                  </dd>
+                </div>
+              </dl>
               <hr />
               <h3>충족한 조건</h3>
               {signal?.reasons.length ? (
@@ -954,33 +996,62 @@ export function StockLab() {
               </p>
             </section>
             <section className={styles.methodCard}>
-              <CircleHelp size={18} />
-              <h3>점수는 어떻게 계산하나요?</h3>
+              <h3>토스 수급 확인</h3>
+              <strong className={styles.flowStatus}>
+                {signal?.flow.status ?? "분석 대기"}
+              </strong>
+              <p>최근 완료 5거래일 · 수급 {signal?.flow.days ?? 0}/5개</p>
               <dl>
                 <div>
-                  <dt>종가·20·60일선 정배열</dt>
-                  <dd>25점</dd>
+                  <dt>외국인 순매수 합계</dt>
+                  <dd>{metric(signal?.flow.foreigner ?? null)}주</dd>
                 </div>
                 <div>
-                  <dt>20일선 상승</dt>
-                  <dd>15점</dd>
+                  <dt>기관 순매수 합계</dt>
+                  <dd>{metric(signal?.flow.institution ?? null)}주</dd>
                 </div>
                 <div>
-                  <dt>RSI 45~65</dt>
-                  <dd>20점</dd>
+                  <dt>공매도 / 거래량</dt>
+                  <dd>{metric(signal?.flow.shortPercent ?? null)}%</dd>
                 </div>
                 <div>
-                  <dt>MACD 신호선 상회</dt>
-                  <dd>20점</dd>
+                  <dt>신용잔고 변화</dt>
+                  <dd>{metric(signal?.flow.creditChange ?? null)}%</dd>
                 </div>
                 <div>
-                  <dt>상승 + 거래량 확대</dt>
-                  <dd>20점</dd>
+                  <dt>대차잔고 변화</dt>
+                  <dd>{metric(signal?.flow.lendingChange ?? null)}%</dd>
                 </div>
               </dl>
               <p>
-                80점 이상 매수 검토 · 55점 이상 관찰. 과거 성과 검증 전의
-                규칙이며 매수 여부는 추가 확인이 필요합니다.
+                순매수 {signal?.flow.start ?? "—"} ~ {signal?.flow.end ?? "—"}
+                <br />
+                공매도 {signal?.flow.shortDate ?? "—"}
+                <br />
+                잔고 {signal?.flow.balancePeriod ?? "—"}
+              </p>
+              <p>
+                공매도·잔고 변화는 참고 정보입니다. 증가를 곧바로 하락 신호로
+                판단하지 않습니다. 누락 수급은 추정하지 않습니다.
+              </p>
+            </section>
+            <section className={styles.methodCard}>
+              <CircleHelp size={18} />
+              <h3>매수 검토 기준</h3>
+              <p>
+                일봉 스윙용 3전략 중 하나의 4조건을 모두 충족하고, 최근 5거래일
+                외국인·기관이 각각 순매수이며 위험 기준을 통과해야 매수 검토로
+                표시합니다.
+              </p>
+              <p>
+                ATR/종가 5% 초과, RSI 75 초과, MA20에서 2ATR 초과 이격, 20일
+                평균 추정 거래대금 10억원 미만은 제외합니다. 거래대금은
+                종가×거래량의 근사치입니다.
+              </p>
+              <p>
+                조건 수는 전략 간 우열이나 수익 확률이 아닙니다. 기준은 설계
+                가정이며 백테스트 전입니다. 실적·공시·시장지수는 아직 반영하지
+                않습니다.
               </p>
             </section>
           </aside>
@@ -992,8 +1063,8 @@ export function StockLab() {
               <p className={styles.eyebrow}>STOCK SCREENER</p>
               <h2>조건에 맞는 종목부터 살펴보세요.</h2>
               <p>
-                기본 목록 30종목을 같은 규칙으로 비교합니다. 전체 시장 순위가
-                아닙니다.
+                기본 목록 30종목의 3전략·토스 수급을 비교합니다. 전체 시장
+                순위가 아닙니다.
               </p>
             </div>
             <button
@@ -1013,7 +1084,7 @@ export function StockLab() {
           {scanning && !screen ? (
             <div className={styles.chartEmpty}>
               <RefreshCw className={styles.spin} />
-              <p>30종목의 일봉을 확인하고 있어요.</p>
+              <p>30종목의 일봉과 토스 수급을 확인하고 있어요.</p>
             </div>
           ) : (
             screen && (
@@ -1042,11 +1113,14 @@ export function StockLab() {
                           "충족 조건 없음"}
                         <small>
                           {r.signal.date} 기준 · {r.source} ·{" "}
+                          {r.signal.flow.status} ·{" "}
                           {r.signal.risks[0] ?? "실적·공시 추가 확인"}
                         </small>
                       </div>
                       <span className={styles.screenScore}>
-                        {r.signal.score ?? "—"}
+                        {r.signal.score != null
+                          ? `${r.signal.score / 25}/4`
+                          : "—"}
                         <small>{r.signal.label}</small>
                       </span>
                       <ArrowUpRight size={18} />
