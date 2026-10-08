@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { getStockData } from "../../../../lib/stock-data";
 import { STOCKS } from "../../../../lib/stock-types";
 import { analyzeHorizon, type Horizon } from "../../../../lib/stock-strategies";
+import {
+  stockAccess,
+  personalResponse,
+  personalPreflight,
+} from "../../../../lib/personal-connection";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 type Result = {
@@ -53,7 +58,7 @@ async function scan(horizon: Horizon) {
   );
   return { at: Date.now(), rows, failed };
 }
-export async function GET(request: Request) {
+async function readScreen(request: Request) {
   const value = new URL(request.url).searchParams.get("horizon") ?? "swing";
   if (!["day", "swing", "position"].includes(value))
     return NextResponse.json(
@@ -87,4 +92,12 @@ export async function GET(request: Request) {
     },
     { headers: { "Cache-Control": "no-store" } },
   );
+}
+export async function GET(request: Request) {
+  return (
+    stockAccess(request) ?? personalResponse(request, await readScreen(request))
+  );
+}
+export function OPTIONS(request: Request) {
+  return personalPreflight(request);
 }
