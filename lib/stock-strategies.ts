@@ -15,6 +15,8 @@ export const HORIZONS = [
   { id: "position", name: "수개월", detail: "수개월 · 일봉·주봉" },
 ] as const;
 export type HorizonSignal = Signal & {
+  basisTime: number | null;
+  basisPrice: number | null;
   horizon: Horizon;
   method: string;
   riskMethod: string;
@@ -24,7 +26,7 @@ export type HorizonSignal = Signal & {
 const methods = {
   day: {
     method:
-      "1분봉 추세 돌파·VWAP 눌림목을 각각 4조건으로 확인합니다. 당일 완료된 1분봉 60개와 장 시작 09:00부터의 VWAP가 필요합니다. 일별 수급은 단타 판정에 쓰지 않습니다.",
+      "09:00~15:30 시간대의 완료된 1분봉으로 추세 돌파·VWAP 눌림목 4조건을 관찰합니다. 09:00부터 최소 60개 봉이 필요합니다. 장전·장후 거래와 일별 수급은 단타 판정에서 제외합니다. 신호 이후 수익성과 진입·청산 규칙은 검증 전입니다.",
     riskMethod:
       "1분봉 ATR/종가 1% 초과, VWAP에서 2ATR 초과 이격, 거래량 0, 이전 20분 추정 거래대금 평균 1억원 미만은 제외합니다. 최종 완료 봉이 5분 넘게 지연되면 판정을 보류합니다. 호가·체결비용은 미반영입니다.",
     flowDays: 0,
@@ -84,19 +86,26 @@ export function analyzeHorizon(
   flows: Flow[],
   horizon: Horizon,
   now: number,
+  observedAt = now,
 ): HorizonSignal {
   const today = koreanDate(now),
-    settings = methods[horizon];
+    settings = methods[horizon],
+    cutoff = Number.isFinite(observedAt) ? Math.min(now, observedAt) : 0;
   if (horizon === "swing")
     return {
       ...evaluateSignal(candles, today, flows),
       horizon,
       ...settings,
       basisLabel: "완료된 일봉",
+      basisTime: candles.filter((c) => c.date < today).at(-1)?.time ?? null,
+      basisPrice: candles.filter((c) => c.date < today).at(-1)?.close ?? null,
     };
   const bars = candles.filter((c) =>
     horizon === "day"
-      ? c.date === today && c.time + 60000 <= now
+      ? c.date === today &&
+        c.time + 60000 <= cutoff &&
+        new Date(c.time + 9 * 3600000).toISOString().slice(11, 16) >= "09:00" &&
+        new Date(c.time + 9 * 3600000).toISOString().slice(11, 16) < "15:30"
       : c.date < today,
   );
   const flow = summarizeFlow(
@@ -105,6 +114,8 @@ export function analyzeHorizon(
     settings.flowDays || 5,
   );
   const result: HorizonSignal = {
+    basisTime: bars.at(-1)?.time ?? null,
+    basisPrice: bars.at(-1)?.close ?? null,
     score: null,
     label: "자료 부족",
     reasons: [],
@@ -156,6 +167,12 @@ export function analyzeHorizon(
     bandwidthPercentile: null,
   };
   if (horizon === "day") {
+    const localTime = new Date(now + 9 * 3600000).toISOString().slice(11, 16);
+    if (localTime < "09:00" || localTime >= "15:30") {
+      result.label = "단타 판정 보류";
+      result.risks.push("09:00~15:30 시간대에만 단타 조건을 관찰합니다.");
+      return result;
+    }
     result.date = `${r.date} ${new Date(r.time).toLocaleTimeString("ko-KR", { timeZone: "Asia/Seoul", hour12: false, hour: "2-digit", minute: "2-digit" })}`;
     if (r.vwap === null || now - r.time - 60000 > 5 * 60000) {
       result.label = "단타 판정 보류";
@@ -303,7 +320,9 @@ export function analyzeHorizon(
     .map((c) => `${best.name}: ${c.label}`);
   result.eligible = best.matched === 4 && result.risks.length === 0;
   result.label = result.eligible
-    ? "매수 검토"
+    ? horizon === "day"
+      ? "조건 충족 · 미검증"
+      : "매수 검토"
     : result.risks.length
       ? "위험·자료 조건 미충족"
       : "조건 관찰";

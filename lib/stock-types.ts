@@ -1,4 +1,5 @@
 export type Candle = {
+  // Interval start in milliseconds, normalized across providers.
   time: number;
   date: string;
   open: number;
@@ -32,6 +33,7 @@ export type StockData = {
   interval: Interval;
   source: "Toss" | "Yahoo";
   fetchedAt: string;
+  candlesAsOf: string;
   quote: { price: number; at: string | null } | null;
   flows: Flow[];
   notices: string[];

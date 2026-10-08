@@ -34,16 +34,18 @@ async function scan(horizon: Horizon) {
             horizon === "day" ? "1m" : "1d",
             horizon !== "day",
           );
+          const signal = analyzeHorizon(
+            data.candles,
+            data.flows,
+            horizon,
+            Date.now(),
+            Date.parse(data.candlesAsOf),
+          );
           rows.push({
             stock,
-            signal: analyzeHorizon(
-              data.candles,
-              data.flows,
-              horizon,
-              Date.now(),
-            ),
+            signal,
             source: data.source,
-            price: data.candles.at(-1)!.close,
+            price: signal.basisPrice ?? data.candles.at(-1)!.close,
           });
         } catch {
           failed.push(stock.code);
@@ -66,7 +68,9 @@ async function readScreen(request: Request) {
       { status: 400 },
     );
   const horizon = value as Horizon,
-    cacheSeconds = horizon === "day" ? 60 : 300;
+    // Shorter than the UI polling interval so scan duration does not make
+    // the next scheduled refresh reuse the previous result for another minute.
+    cacheSeconds = horizon === "day" ? 30 : 240;
   let result = saved.get(horizon);
   if (!result || Date.now() - result.at > cacheSeconds * 1000) {
     if (!flights.has(horizon))

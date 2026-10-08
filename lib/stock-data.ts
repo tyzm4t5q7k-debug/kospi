@@ -164,12 +164,17 @@ export async function getQuote(code: string): Promise<StockData["quote"]> {
     };
   });
 }
-export function parseTossCandles(rows: any[]): Candle[] {
+export function parseTossCandles(
+  rows: any[],
+  interval: Interval = "1d",
+): Candle[] {
   return cleanCandles(
     rows
       .filter((row) => row.currency === "KRW")
       .map((row) => {
-        const time = Date.parse(row.timestamp);
+        // Toss labels minute bars by their END; Yahoo/internal bars use START.
+        const time =
+          Date.parse(row.timestamp) - (interval === "1m" ? 60000 : 0);
         return {
           time,
           date: Number.isFinite(time) ? koreanDate(time) : "",
@@ -187,6 +192,7 @@ async function tossCandles(code: string, interval: Interval) {
     `toss-bars:${code}:${interval}`,
     interval === "1d" ? 60000 : 15000,
     async () => {
+      const asOf = new Date().toISOString();
       const bars: Candle[] = [];
       let before: string | undefined;
       for (let page = 0; page < 3; page++) {
@@ -197,13 +203,13 @@ async function tossCandles(code: string, interval: Interval) {
           adjusted: "true",
           ...(before ? { before } : {}),
         });
-        bars.push(...parseTossCandles(result.candles ?? []));
+        bars.push(...parseTossCandles(result.candles ?? [], interval));
         if (!result.nextBefore || result.nextBefore === before) break;
         before = result.nextBefore;
       }
       const cleaned = cleanCandles(bars);
       if (!cleaned.length) throw new Error("조회할 캔들 데이터가 없습니다");
-      return cleaned;
+      return { candles: cleaned, asOf };
     },
   );
 }
@@ -224,6 +230,7 @@ export function parseYahoo(result: any): Candle[] {
 }
 async function yahooData(code: string, market: string, interval: Interval) {
   return cached(`yahoo:${code}:${market}:${interval}`, 60000, async () => {
+    const asOf = new Date().toISOString();
     const symbol = `${code}.${market === "KOSDAQ" ? "KQ" : "KS"}`;
     const response = await fetch(
       `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${interval === "1d" ? "2y" : "5d"}&interval=${interval}&includePrePost=false`,
@@ -246,6 +253,7 @@ async function yahooData(code: string, market: string, interval: Interval) {
       t = numeric(result.meta?.regularMarketTime);
     return {
       candles,
+      asOf,
       quote:
         price !== null
           ? { price, at: t ? new Date(t * 1000).toISOString() : null }
@@ -328,7 +336,7 @@ export async function getStockData(
     notices: string[] = [];
   if (tossConfigured()) {
     try {
-      const [candles, quote, flows] = await Promise.all([
+      const [snapshot, quote, flows] = await Promise.all([
         tossCandles(code, interval),
         getQuote(code).catch(() => {
           notices.push("현재가 조회 실패 — 차트 종가와 구분해 주세요");
@@ -343,7 +351,8 @@ export async function getStockData(
       ]);
       return {
         stock,
-        candles,
+        candles: snapshot.candles,
+        candlesAsOf: snapshot.asOf,
         quote,
         interval,
         flows: flows.flows,
@@ -357,10 +366,15 @@ export async function getStockData(
       );
     }
   } else notices.push("토스 API 미연결 — 지연 가능한 Yahoo 시세");
-  const { candles, quote } = await yahooData(code, stock.market, interval);
+  const { candles, quote, asOf } = await yahooData(
+    code,
+    stock.market,
+    interval,
+  );
   return {
     stock,
     candles,
+    candlesAsOf: asOf,
     quote,
     interval,
     flows: [],
