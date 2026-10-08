@@ -68,7 +68,9 @@ async function readScreen(request: Request) {
       { status: 400 },
     );
   const horizon = value as Horizon,
-    cacheSeconds = horizon === "day" ? 60 : 300;
+    // Shorter than the UI polling interval so scan duration does not make
+    // the next scheduled refresh reuse the previous result for another minute.
+    cacheSeconds = horizon === "day" ? 30 : 240;
   let result = saved.get(horizon);
   if (!result || Date.now() - result.at > cacheSeconds * 1000) {
     if (!flights.has(horizon))
