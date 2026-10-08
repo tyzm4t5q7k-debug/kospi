@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStockData } from "../../../lib/stock-data";
+import {
+  stockAccess,
+  personalResponse,
+  personalPreflight,
+} from "../../../lib/personal-connection";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
-export async function GET(request: NextRequest) {
+async function readStock(request: NextRequest) {
   const p = request.nextUrl.searchParams,
     code = (p.get("code") ?? "005930").toUpperCase(),
     interval = p.get("interval") ?? "1d",
@@ -30,4 +35,12 @@ export async function GET(request: NextRequest) {
       { status: 502 },
     );
   }
+}
+export async function GET(request: NextRequest) {
+  return (
+    stockAccess(request) ?? personalResponse(request, await readStock(request))
+  );
+}
+export function OPTIONS(request: Request) {
+  return personalPreflight(request);
 }

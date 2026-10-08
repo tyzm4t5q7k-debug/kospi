@@ -147,6 +147,91 @@
 .mobileBreak {
   display: none;
 }
+.personalPanel {
+  border: 1px solid #34544e;
+  border-radius: 12px;
+  background: #11221f;
+  margin-bottom: 24px;
+}
+.personalPanel summary {
+  cursor: pointer;
+  padding: 16px 20px;
+}
+.personalPanel summary span {
+  color: var(--muted);
+  margin-left: 16px;
+  font-size: 12px;
+}
+.personalBody {
+  border-top: 1px solid #34544e;
+  padding: 20px;
+}
+.personalBody p {
+  color: #b7c7c5;
+  margin: 12px 0;
+}
+.personalBody a {
+  color: var(--mint);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.personalBody ol {
+  padding-left: 22px;
+  margin: 0 0 18px;
+}
+.personalBody li {
+  margin: 8px 0;
+}
+.personalActions,
+.personalForm {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.personalBody button {
+  background: #21483f;
+  color: #e8fff9;
+  border: 1px solid #42796b;
+  border-radius: 7px;
+  padding: 9px 14px;
+  cursor: pointer;
+}
+.personalBody button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+.personalForm label {
+  flex-basis: 100%;
+}
+.personalForm input {
+  background: #0b1715;
+  color: #e8fff9;
+  border: 1px solid #42796b;
+  border-radius: 7px;
+  padding: 10px 12px;
+  width: min(100%, 285px);
+  box-sizing: border-box;
+}
+.personalBody [role="alert"] {
+  color: #fecaca;
+}
+.pairingCode {
+  margin-top: 18px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.pairingCode output {
+  color: #a8ffe9;
+  font: 20px monospace;
+  overflow-wrap: anywhere;
+}
+.pairingCode small {
+  flex-basis: 100%;
+  color: var(--muted);
+}
 .tabs {
   display: flex;
   align-items: center;

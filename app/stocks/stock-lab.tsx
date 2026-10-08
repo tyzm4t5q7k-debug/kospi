@@ -44,6 +44,8 @@ import {
   type Horizon,
 } from "../../lib/stock-strategies";
 import styles from "./stocks.module.css";
+import { PersonalConnection } from "./personal-connection";
+import { stockRequest, type PersonalSession } from "../../lib/stock-client";
 
 const colors = [
   "#67e8d2",
@@ -167,6 +169,13 @@ const FLOW_LABELS: Record<string, string> = {
 };
 
 export function StockLab() {
+  const [personalSession, setPersonalSession] =
+    useState<PersonalSession | null>(null);
+  const request = useCallback(
+    (path: string, init?: RequestInit) =>
+      stockRequest(path, init, personalSession),
+    [personalSession],
+  );
   const [horizon, setHorizon] = useState<Horizon>("swing");
   const scanVersion = useRef(0);
   const [stock, setStock] = useState<Stock>(STOCKS[0]),
@@ -205,7 +214,7 @@ export function StockLab() {
       if (busy) return;
       busy = true;
       try {
-        const response = await fetch(
+        const response = await request(
           `/api/stocks?code=${stock.code}&market=${stock.market}&interval=${interval}`,
           { signal: controller.signal },
         );
@@ -231,7 +240,7 @@ export function StockLab() {
       controller.abort();
       window.clearInterval(timer);
     };
-  }, [stock, interval, refresh]);
+  }, [stock, interval, refresh, request]);
   useEffect(() => {
     if (data?.source !== "Toss" || !automatic) return;
     const controller = new AbortController();
@@ -240,7 +249,7 @@ export function StockLab() {
       if (document.hidden || busy) return;
       busy = true;
       try {
-        const r = await fetch(`/api/stocks/quote?code=${stock.code}`, {
+        const r = await request(`/api/stocks/quote?code=${stock.code}`, {
           signal: controller.signal,
         });
         const j = await r.json();
@@ -263,7 +272,7 @@ export function StockLab() {
       controller.abort();
       window.clearInterval(timer);
     };
-  }, [data?.source, stock.code, automatic]);
+  }, [data?.source, stock.code, automatic, request]);
   const rows = useMemo(
     () =>
       calculateIndicators(
@@ -331,7 +340,7 @@ export function StockLab() {
     setScanning(true);
     setScanError("");
     try {
-      const r = await fetch(`/api/stocks/screen?horizon=${horizon}`);
+      const r = await request(`/api/stocks/screen?horizon=${horizon}`);
       if (!r.ok) throw new Error();
       const result = await r.json();
       if (version === scanVersion.current) setScreen(result);
@@ -341,7 +350,7 @@ export function StockLab() {
     } finally {
       if (version === scanVersion.current) setScanning(false);
     }
-  }, [horizon]);
+  }, [horizon, request]);
   useEffect(() => {
     ++scanVersion.current;
     setScreen(null);
@@ -418,6 +427,13 @@ export function StockLab() {
           </div>
         </div>
       </section>
+      <PersonalConnection
+        session={personalSession}
+        onChange={setPersonalSession}
+        connectionError={
+          error || (quoteError ? "현재가 연결을 확인해 주세요." : "")
+        }
+      />
       <div className={styles.horizonBar} aria-label="매매 기간">
         {HORIZONS.map((item) => (
           <button

@@ -20,6 +20,8 @@
     "../lib/stock-types.ts",
     "../lib/stock-indicators.ts",
     "../lib/stock-data.ts",
-    "../lib/stock-strategies.ts"
+    "../lib/stock-strategies.ts",
+    "../lib/personal-connection.ts",
+    "../lib/stock-client.ts"
   ]
 }
