@@ -1,18 +1,19 @@
 import { NextResponse } from "next/server";
 import { getStockData } from "../../../../lib/stock-data";
-import { STOCKS, koreanDate } from "../../../../lib/stock-types";
-import { evaluateSignal } from "../../../../lib/stock-indicators";
+import { STOCKS } from "../../../../lib/stock-types";
+import { analyzeHorizon, type Horizon } from "../../../../lib/stock-strategies";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 type Result = {
   stock: (typeof STOCKS)[number];
-  signal: ReturnType<typeof evaluateSignal>;
+  signal: ReturnType<typeof analyzeHorizon>;
   source: string;
   price: number;
 };
-let saved: { at: number; rows: Result[]; failed: string[] } | undefined;
-let flight: Promise<NonNullable<typeof saved>> | undefined;
-async function scan() {
+type ScanResult = { at: number; rows: Result[]; failed: string[] };
+const saved = new Map<Horizon, ScanResult>();
+const flights = new Map<Horizon, Promise<ScanResult>>();
+async function scan(horizon: Horizon) {
   const rows: Result[] = [],
     failed: string[] = [];
   let i = 0;
@@ -22,13 +23,19 @@ async function scan() {
       while (i < STOCKS.length) {
         const stock = STOCKS[i++];
         try {
-          const data = await getStockData(stock.code, stock.market, "1d", true);
+          const data = await getStockData(
+            stock.code,
+            stock.market,
+            horizon === "day" ? "1m" : "1d",
+            horizon !== "day",
+          );
           rows.push({
             stock,
-            signal: evaluateSignal(
+            signal: analyzeHorizon(
               data.candles,
-              koreanDate(Date.now()),
               data.flows,
+              horizon,
+              Date.now(),
             ),
             source: data.source,
             price: data.candles.at(-1)!.close,
@@ -46,19 +53,37 @@ async function scan() {
   );
   return { at: Date.now(), rows, failed };
 }
-export async function GET() {
-  if (!saved || Date.now() - saved.at > 300000) {
-    flight ??= scan()
-      .then((r) => (saved = r))
-      .finally(() => (flight = undefined));
-    saved = await flight;
+export async function GET(request: Request) {
+  const value = new URL(request.url).searchParams.get("horizon") ?? "swing";
+  if (!["day", "swing", "position"].includes(value))
+    return NextResponse.json(
+      { error: "올바른 매매 기간을 선택해 주세요." },
+      { status: 400 },
+    );
+  const horizon = value as Horizon,
+    cacheSeconds = horizon === "day" ? 60 : 300;
+  let result = saved.get(horizon);
+  if (!result || Date.now() - result.at > cacheSeconds * 1000) {
+    if (!flights.has(horizon))
+      flights.set(
+        horizon,
+        scan(horizon)
+          .then((r) => {
+            saved.set(horizon, r);
+            return r;
+          })
+          .finally(() => flights.delete(horizon)),
+      );
+    result = await flights.get(horizon)!;
   }
   return NextResponse.json(
     {
-      ...saved,
+      ...result,
+      horizon,
+      cacheSeconds,
       universe: STOCKS.length,
-      method: "일봉 스윙 · 3전략 조건 · 5거래일 수급 · 위험 필터",
-      asOf: new Date(saved.at).toISOString(),
+      method: horizon,
+      asOf: new Date(result.at).toISOString(),
     },
     { headers: { "Cache-Control": "no-store" } },
   );

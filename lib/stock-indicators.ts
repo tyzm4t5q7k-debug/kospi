@@ -659,15 +659,20 @@ export type FlowSignal = {
   lendingChange: N;
   balancePeriod: string | null;
 };
-export function summarizeFlow(bars: Candle[], flows: Flow[]): FlowSignal {
+export function summarizeFlow(
+  bars: Candle[],
+  flows: Flow[],
+  requiredDays = 5,
+): FlowSignal {
   // Require every one of the last five completed sessions; missing is never neutral/zero.
-  const last = bars.slice(-5);
+  const last = bars.slice(-requiredDays);
   const byDate = new Map(flows.map((f) => [f.date, f]));
   const records = last.map((b) => byDate.get(b.date));
   const valid = records.filter(
     (f): f is Flow => !!f && f.foreigner !== null && f.institution !== null,
   );
-  const complete = last.length === 5 && valid.length === 5;
+  const complete =
+    last.length === requiredDays && valid.length === requiredDays;
   const foreigner = complete
     ? valid.reduce((s, f) => s + f.foreigner!, 0)
     : null;

@@ -36,9 +36,13 @@ import {
   OSCILLATORS,
   KEY_LABELS,
   calculateIndicators,
-  evaluateSignal,
   volumeProfile,
 } from "../../lib/stock-indicators";
+import {
+  HORIZONS,
+  analyzeHorizon,
+  type Horizon,
+} from "../../lib/stock-strategies";
 import styles from "./stocks.module.css";
 
 const colors = [
@@ -129,13 +133,15 @@ function ChartTip({ active, payload, label: date }: any) {
 type ScreenResult = {
   rows: {
     stock: Stock;
-    signal: ReturnType<typeof evaluateSignal>;
+    signal: ReturnType<typeof analyzeHorizon>;
     source: string;
     price: number;
   }[];
   failed: string[];
   universe: number;
   asOf: string;
+  horizon: Horizon;
+  cacheSeconds: number;
 };
 const FLOW_OPTIONS = [
   {
@@ -161,6 +167,8 @@ const FLOW_LABELS: Record<string, string> = {
 };
 
 export function StockLab() {
+  const [horizon, setHorizon] = useState<Horizon>("swing");
+  const scanVersion = useRef(0);
   const [stock, setStock] = useState<Stock>(STOCKS[0]),
     [query, setQuery] = useState(""),
     [market, setMarket] = useState("KOSPI"),
@@ -285,10 +293,10 @@ export function StockLab() {
   );
   const signal = useMemo(
     () =>
-      interval === "1d" && data && !error
-        ? evaluateSignal(data.candles, koreanDate(Date.now()), data.flows)
+      data && data.interval === (horizon === "day" ? "1m" : "1d") && !error
+        ? analyzeHorizon(data.candles, data.flows, horizon, Date.now())
         : null,
-    [data, interval, error],
+    [data, horizon, error],
   );
   const selected = OSCILLATORS.find((o) => o.id === oscillator)!;
   const lines = [
@@ -319,18 +327,37 @@ export function StockLab() {
       old.includes(id) ? old.filter((x) => x !== id) : [...old, id],
     );
   const scan = useCallback(async () => {
+    const version = ++scanVersion.current;
     setScanning(true);
     setScanError("");
     try {
-      const r = await fetch("/api/stocks/screen");
+      const r = await fetch(`/api/stocks/screen?horizon=${horizon}`);
       if (!r.ok) throw new Error();
-      setScreen(await r.json());
+      const result = await r.json();
+      if (version === scanVersion.current) setScreen(result);
     } catch {
-      setScanError("후보 분석을 불러오지 못했습니다. 다시 시도해 주세요.");
+      if (version === scanVersion.current)
+        setScanError("후보 분석을 불러오지 못했습니다. 다시 시도해 주세요.");
     } finally {
-      setScanning(false);
+      if (version === scanVersion.current) setScanning(false);
     }
-  }, []);
+  }, [horizon]);
+  useEffect(() => {
+    ++scanVersion.current;
+    setScreen(null);
+    setScanning(false);
+    setScanError("");
+    if (tab === "screen") void scan();
+  }, [horizon, scan]);
+  const chooseHorizon = (value: Horizon) => {
+    if (value !== horizon) {
+      ++scanVersion.current;
+      setScreen(null);
+    }
+    setHorizon(value);
+    setIntervalValue(value === "day" ? "1m" : "1d");
+    setOverlays(value === "day" ? ["ema", "vwap"] : ["ma"]);
+  };
   const quote = data?.quote?.price,
     prior =
       interval === "1d"
@@ -391,6 +418,21 @@ export function StockLab() {
           </div>
         </div>
       </section>
+      <div className={styles.horizonBar} aria-label="매매 기간">
+        {HORIZONS.map((item) => (
+          <button
+            key={item.id}
+            aria-pressed={horizon === item.id}
+            onClick={() => chooseHorizon(item.id)}
+          >
+            <strong>{item.name}</strong>
+            <small>{item.detail}</small>
+          </button>
+        ))}
+      </div>
+      <p className={styles.validationNotice}>
+        실험용 분석 · 수익성 검증 전 · 자동 주문 없음
+      </p>
       <nav className={styles.tabs} aria-label="분석 메뉴">
         <button aria-selected={tab === "chart"} onClick={() => setTab("chart")}>
           <BarChart3 size={17} /> 종목 분석
@@ -904,7 +946,7 @@ export function StockLab() {
           <aside className={styles.insight}>
             <section className={styles.signalCard}>
               <p className={styles.eyebrow}>TECHNICAL SIGNAL</p>
-              <h2>전략별 조건과 수급</h2>
+              <h2>{HORIZONS.find((h) => h.id === horizon)!.name} 전략 분석</h2>
               <div className={styles.score}>
                 <strong>
                   {signal?.score != null ? signal.score / 25 : "—"}
@@ -913,12 +955,17 @@ export function StockLab() {
               </div>
               <div className={styles.signalLabel}>
                 {signal?.label ??
-                  (interval === "1m" ? "일봉에서 분석합니다" : "분석 대기")}
+                  (data && data.interval !== (horizon === "day" ? "1m" : "1d")
+                    ? `${horizon === "day" ? "1분봉" : "일봉"} 차트에서 분석합니다`
+                    : "분석 대기")}
               </div>
               <p className={styles.scoreNote}>
                 가장 많이 충족한 전략의 기술조건입니다.
                 <br />
-                수급·위험은 별도로 확인합니다. 상승 확률이 아닙니다.
+                {horizon === "day"
+                  ? "위험을 별도로 확인하며 일별 수급은 판정에 쓰지 않습니다."
+                  : "수급·위험은 별도로 확인합니다."}{" "}
+                상승 확률이 아닙니다.
               </p>
               <div className={styles.strategyList}>
                 {signal?.strategies.map((strategy) => (
@@ -950,7 +997,7 @@ export function StockLab() {
                   <dd>{metric(signal?.metrics.atrPercent ?? null)}%</dd>
                 </div>
                 <div>
-                  <dt>거래량 / 이전 20일 평균</dt>
+                  <dt>거래량 / 이전 20봉 평균</dt>
                   <dd>{metric(signal?.metrics.volumeRatio ?? null)}배</dd>
                 </div>
                 <div>
@@ -992,62 +1039,62 @@ export function StockLab() {
               <p className={styles.asOf}>
                 분석 기준 {signal?.date ?? "—"}
                 <br />
-                완료된 일봉만 사용
+                {signal?.basisLabel ?? "완료된 봉만 사용"}
               </p>
             </section>
-            <section className={styles.methodCard}>
-              <h3>토스 수급 확인</h3>
-              <strong className={styles.flowStatus}>
-                {signal?.flow.status ?? "분석 대기"}
-              </strong>
-              <p>최근 완료 5거래일 · 수급 {signal?.flow.days ?? 0}/5개</p>
-              <dl>
-                <div>
-                  <dt>외국인 순매수 합계</dt>
-                  <dd>{metric(signal?.flow.foreigner ?? null)}주</dd>
-                </div>
-                <div>
-                  <dt>기관 순매수 합계</dt>
-                  <dd>{metric(signal?.flow.institution ?? null)}주</dd>
-                </div>
-                <div>
-                  <dt>공매도 / 거래량</dt>
-                  <dd>{metric(signal?.flow.shortPercent ?? null)}%</dd>
-                </div>
-                <div>
-                  <dt>신용잔고 변화</dt>
-                  <dd>{metric(signal?.flow.creditChange ?? null)}%</dd>
-                </div>
-                <div>
-                  <dt>대차잔고 변화</dt>
-                  <dd>{metric(signal?.flow.lendingChange ?? null)}%</dd>
-                </div>
-              </dl>
-              <p>
-                순매수 {signal?.flow.start ?? "—"} ~ {signal?.flow.end ?? "—"}
-                <br />
-                공매도 {signal?.flow.shortDate ?? "—"}
-                <br />
-                잔고 {signal?.flow.balancePeriod ?? "—"}
-              </p>
-              <p>
-                공매도·잔고 변화는 참고 정보입니다. 증가를 곧바로 하락 신호로
-                판단하지 않습니다. 누락 수급은 추정하지 않습니다.
-              </p>
-            </section>
+            {horizon !== "day" && (
+              <section className={styles.methodCard}>
+                <h3>토스 수급 확인</h3>
+                <strong className={styles.flowStatus}>
+                  {signal?.flow.status ?? "분석 대기"}
+                </strong>
+                <p>
+                  최근 완료 {horizon === "position" ? 20 : 5}거래일 · 수급{" "}
+                  {signal?.flow.days ?? 0}/{horizon === "position" ? 20 : 5}개
+                </p>
+                <dl>
+                  <div>
+                    <dt>외국인 순매수 합계</dt>
+                    <dd>{metric(signal?.flow.foreigner ?? null)}주</dd>
+                  </div>
+                  <div>
+                    <dt>기관 순매수 합계</dt>
+                    <dd>{metric(signal?.flow.institution ?? null)}주</dd>
+                  </div>
+                  <div>
+                    <dt>공매도 / 거래량</dt>
+                    <dd>{metric(signal?.flow.shortPercent ?? null)}%</dd>
+                  </div>
+                  <div>
+                    <dt>신용잔고 변화</dt>
+                    <dd>{metric(signal?.flow.creditChange ?? null)}%</dd>
+                  </div>
+                  <div>
+                    <dt>대차잔고 변화</dt>
+                    <dd>{metric(signal?.flow.lendingChange ?? null)}%</dd>
+                  </div>
+                </dl>
+                <p>
+                  순매수 {signal?.flow.start ?? "—"} ~ {signal?.flow.end ?? "—"}
+                  <br />
+                  공매도 {signal?.flow.shortDate ?? "—"}
+                  <br />
+                  잔고 {signal?.flow.balancePeriod ?? "—"}
+                </p>
+                <p>
+                  공매도·잔고 변화는 참고 정보입니다. 증가를 곧바로 하락 신호로
+                  판단하지 않습니다. 누락 수급은 추정하지 않습니다.
+                </p>
+              </section>
+            )}
             <section className={styles.methodCard}>
               <CircleHelp size={18} />
               <h3>매수 검토 기준</h3>
               <p>
-                일봉 스윙용 3전략 중 하나의 4조건을 모두 충족하고, 최근 5거래일
-                외국인·기관이 각각 순매수이며 위험 기준을 통과해야 매수 검토로
-                표시합니다.
+                {signal?.method ??
+                  "선택한 매매 기간의 데이터를 불러오면 기준을 표시합니다."}
               </p>
-              <p>
-                ATR/종가 5% 초과, RSI 75 초과, MA20에서 2ATR 초과 이격, 20일
-                평균 추정 거래대금 10억원 미만은 제외합니다. 거래대금은
-                종가×거래량의 근사치입니다.
-              </p>
+              <p>{signal?.riskMethod} 거래대금은 종가×거래량의 근사치입니다.</p>
               <p>
                 조건 수는 전략 간 우열이나 수익 확률이 아닙니다. 기준은 설계
                 가정이며 백테스트 전입니다. 실적·공시·시장지수는 아직 반영하지
@@ -1063,8 +1110,8 @@ export function StockLab() {
               <p className={styles.eyebrow}>STOCK SCREENER</p>
               <h2>조건에 맞는 종목부터 살펴보세요.</h2>
               <p>
-                기본 목록 30종목의 3전략·토스 수급을 비교합니다. 전체 시장
-                순위가 아닙니다.
+                {HORIZONS.find((h) => h.id === horizon)!.name} 기준으로 기본
+                목록 30종목을 비교합니다. 전체 시장 순위가 아닙니다.
               </p>
             </div>
             <button
@@ -1084,14 +1131,15 @@ export function StockLab() {
           {scanning && !screen ? (
             <div className={styles.chartEmpty}>
               <RefreshCw className={styles.spin} />
-              <p>30종목의 일봉과 토스 수급을 확인하고 있어요.</p>
+              <p>30종목의 선택 기간 시세·수급을 확인하고 있어요.</p>
             </div>
           ) : (
             screen && (
               <>
                 <p className={styles.smallNote}>
                   분석 {screen.rows.length}/{screen.universe}종목 · 수집{" "}
-                  {clock(screen.asOf)} KST · 5분 캐시
+                  {clock(screen.asOf)} KST · {screen.cacheSeconds}초 캐시 · 매수
+                  검토 {screen.rows.filter((r) => r.signal.eligible).length}종목
                   {screen.failed.length
                     ? ` · 조회 실패 ${screen.failed.length}종목 (${screen.failed.join(", ")})`
                     : ""}
@@ -1113,8 +1161,10 @@ export function StockLab() {
                           "충족 조건 없음"}
                         <small>
                           {r.signal.date} 기준 · {r.source} ·{" "}
-                          {r.signal.flow.status} ·{" "}
-                          {r.signal.risks[0] ?? "실적·공시 추가 확인"}
+                          {horizon === "day"
+                            ? "완료된 1분봉"
+                            : r.signal.flow.status}{" "}
+                          · {r.signal.risks[0] ?? "실적·공시 추가 확인"}
                         </small>
                       </div>
                       <span className={styles.screenScore}>

@@ -1191,3 +1191,38 @@
   display: block;
   margin: 16px 0 8px;
 }
+.horizonBar {
+  display: flex;
+  gap: 10px;
+  margin: 22px 0 10px;
+}
+.horizonBar button {
+  flex: 1;
+  max-width: 250px;
+  background: #141b29;
+  border: 1px solid #2b3545;
+  border-radius: 12px;
+  padding: 14px;
+  color: #a4afbd;
+  cursor: pointer;
+  text-align: left;
+}
+.horizonBar button[aria-pressed="true"] {
+  border-color: #67e8d2;
+  background: #19322f;
+  color: #c2f8ed;
+}
+.horizonBar strong {
+  display: block;
+  font-size: 14px;
+}
+.horizonBar small {
+  display: block;
+  margin-top: 6px;
+  font-size: 10px;
+}
+.validationNotice {
+  color: #b7a784;
+  font-size: 11px;
+  margin: 10px 0 20px;
+}
