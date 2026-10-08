@@ -211,7 +211,7 @@ export default function Page() {
           </button>
         </nav>
 
-        <nav className="section-links" aria-label="포트폴리오 섹션"><a href="#contest-project">상권 분석 프로젝트</a><a href="#case-studies">시장·환율 분석 3편</a><a href="#live-market">최신 시장 비교</a><a href="#scenarios">시나리오 계산</a><a href="#research-notes">이슈 노트</a><a href="#report-export">현재 화면 PDF</a></nav>
+        <nav className="section-links" aria-label="포트폴리오 섹션"><a href="/stocks">국내 주식 분석 · 매수 검토 후보 ↗</a><a href="#contest-project">상권 분석 프로젝트</a><a href="#case-studies">시장·환율 분석 3편</a><a href="#live-market">최신 시장 비교</a><a href="#scenarios">시나리오 계산</a><a href="#research-notes">이슈 노트</a><a href="#report-export">현재 화면 PDF</a></nav>
         <ContestProject />
         <PortfolioIntro />
         <PortfolioStudies />

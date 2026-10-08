@@ -7,9 +7,7 @@
     "strict": true,
     "outDir": "../.test-build",
     "rootDir": "../lib",
-    "types": [
-      "node"
-    ]
+    "types": ["node"]
   },
   "include": [
     "../lib/analytics.ts",
@@ -18,6 +16,10 @@
     "../lib/research.ts",
     "../lib/report.ts",
     "../lib/case-studies.ts",
-    "../lib/experiment-demo.ts"
+    "../lib/experiment-demo.ts",
+    "../lib/stock-types.ts",
+    "../lib/stock-indicators.ts",
+    "../lib/stock-data.ts",
+    "../lib/stock-strategies.ts"
   ]
 }
