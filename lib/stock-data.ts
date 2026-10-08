@@ -56,6 +56,10 @@ async function cached<T>(
 }
 async function accessToken(): Promise<string> {
   if (process.env.TOSS_ACCESS_TOKEN) return process.env.TOSS_ACCESS_TOKEN;
+  // A new Toss token revokes the previous one. Per-process locks cannot
+  // coordinate Vercel instances, so never mint tokens there without a shared issuer.
+  if (process.env.VERCEL === "1" && tossConfigured())
+    throw new Error("토스 공유 인증 서버 설정 필요 — 로컬에서 조회해 주세요");
   if (token && token.expires > Date.now() + 60000) return token.value;
   if (tokenFlight) return tokenFlight;
   tokenFlight = (async () => {
