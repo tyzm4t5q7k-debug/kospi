@@ -34,16 +34,18 @@ async function scan(horizon: Horizon) {
             horizon === "day" ? "1m" : "1d",
             horizon !== "day",
           );
+          const signal = analyzeHorizon(
+            data.candles,
+            data.flows,
+            horizon,
+            Date.now(),
+            Date.parse(data.candlesAsOf),
+          );
           rows.push({
             stock,
-            signal: analyzeHorizon(
-              data.candles,
-              data.flows,
-              horizon,
-              Date.now(),
-            ),
+            signal,
             source: data.source,
-            price: data.candles.at(-1)!.close,
+            price: signal.basisPrice ?? data.candles.at(-1)!.close,
           });
         } catch {
           failed.push(stock.code);

@@ -530,13 +530,17 @@ export function calculateIndicators(
       day = bar.date;
       pv = 0;
       vol = 0;
-      const hhmm = new Date(bar.time + 9 * 3600000).toISOString().slice(11, 16);
-      completeSession = hhmm <= "09:00";
+      completeSession = false;
     }
-    pv += tp[i] * v[i];
-    vol += v[i];
+    const hhmm = new Date(bar.time + 9 * 3600000).toISOString().slice(11, 16);
+    const regular = hhmm >= "09:00" && hhmm < "15:30";
+    if (hhmm === "09:00") completeSession = true;
+    if (regular && completeSession) {
+      pv += tp[i] * v[i];
+      vol += v[i];
+    }
     out.vwap.push(
-      interval === "1m" && completeSession && vol ? pv / vol : null,
+      interval === "1m" && regular && completeSession && vol ? pv / vol : null,
     );
     if (bar.date >= anchor) {
       ap += tp[i] * v[i];

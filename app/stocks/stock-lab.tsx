@@ -178,6 +178,7 @@ export function StockLab() {
   );
   const [horizon, setHorizon] = useState<Horizon>("swing");
   const scanVersion = useRef(0);
+  const scanController = useRef<AbortController | null>(null);
   const [stock, setStock] = useState<Stock>(STOCKS[0]),
     [query, setQuery] = useState(""),
     [market, setMarket] = useState("KOSPI"),
@@ -303,7 +304,13 @@ export function StockLab() {
   const signal = useMemo(
     () =>
       data && data.interval === (horizon === "day" ? "1m" : "1d") && !error
-        ? analyzeHorizon(data.candles, data.flows, horizon, Date.now())
+        ? analyzeHorizon(
+            data.candles,
+            data.flows,
+            horizon,
+            Date.now(),
+            Date.parse(data.candlesAsOf ?? data.fetchedAt),
+          )
         : null,
     [data, horizon, error],
   );
@@ -337,18 +344,26 @@ export function StockLab() {
     );
   const scan = useCallback(async () => {
     const version = ++scanVersion.current;
+    scanController.current?.abort();
+    const controller = new AbortController();
+    scanController.current = controller;
     setScanning(true);
     setScanError("");
     try {
-      const r = await request(`/api/stocks/screen?horizon=${horizon}`);
+      const r = await request(`/api/stocks/screen?horizon=${horizon}`, {
+        signal: controller.signal,
+      });
       if (!r.ok) throw new Error();
       const result = await r.json();
       if (version === scanVersion.current) setScreen(result);
     } catch {
-      if (version === scanVersion.current)
+      if (!controller.signal.aborted && version === scanVersion.current)
         setScanError("후보 분석을 불러오지 못했습니다. 다시 시도해 주세요.");
     } finally {
-      if (version === scanVersion.current) setScanning(false);
+      if (version === scanVersion.current) {
+        setScanning(false);
+        scanController.current = null;
+      }
     }
   }, [horizon, request]);
   useEffect(() => {
@@ -356,8 +371,27 @@ export function StockLab() {
     setScreen(null);
     setScanning(false);
     setScanError("");
-    if (tab === "screen") void scan();
   }, [horizon, scan]);
+  useEffect(() => {
+    if (tab !== "screen") return;
+    void scan();
+    const update = () => {
+      if (automaticRef.current && !document.hidden && !scanController.current)
+        void scan();
+    };
+    const timer = window.setInterval(
+      update,
+      horizon === "day" ? 60000 : 300000,
+    );
+    document.addEventListener("visibilitychange", update);
+    return () => {
+      ++scanVersion.current;
+      scanController.current?.abort();
+      scanController.current = null;
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", update);
+    };
+  }, [tab, scan, horizon]);
   const chooseHorizon = (value: Horizon) => {
     if (value !== horizon) {
       ++scanVersion.current;
@@ -457,10 +491,11 @@ export function StockLab() {
           aria-selected={tab === "screen"}
           onClick={() => {
             setTab("screen");
-            if (!screen && !scanning) void scan();
           }}
         >
-          <Activity size={17} /> 매수 검토 후보 <span>30</span>
+          <Activity size={17} />{" "}
+          {horizon === "day" ? "단타 조건 관찰" : "매수 검토 후보"}{" "}
+          <span>30</span>
         </button>
         <span className={styles.tabNote}>KOSPI · KOSDAQ</span>
       </nav>
@@ -983,6 +1018,17 @@ export function StockLab() {
                   : "수급·위험은 별도로 확인합니다."}{" "}
                 상승 확률이 아닙니다.
               </p>
+              {horizon === "day" && (
+                <p className={styles.validationNotice}>
+                  4/4는 해당 분봉의 조건 일치 수입니다. 이후 수익률과 진입·청산
+                  규칙은 검증 전입니다. 판정 봉 종가 {fmt(signal?.basisPrice)}원
+                  · 봉 시작{" "}
+                  {signal?.basisTime
+                    ? clock(new Date(signal.basisTime).toISOString())
+                    : "—"}{" "}
+                  KST
+                </p>
+              )}
               <div className={styles.strategyList}>
                 {signal?.strategies.map((strategy) => (
                   <details
@@ -1129,6 +1175,12 @@ export function StockLab() {
                 {HORIZONS.find((h) => h.id === horizon)!.name} 기준으로 기본
                 목록 30종목을 비교합니다. 전체 시장 순위가 아닙니다.
               </p>
+              {horizon === "day" && (
+                <p className={styles.validationNotice}>
+                  수익성 미검증 조건 관찰입니다. 4/4만으로 이후 가격 상승을
+                  예측하지 않습니다.
+                </p>
+              )}
             </div>
             <button
               className={styles.primaryButton}
@@ -1139,6 +1191,15 @@ export function StockLab() {
               {scanning ? "분석 중…" : "후보 다시 분석"}
             </button>
           </div>
+          <label className={styles.smallNote}>
+            <input
+              type="checkbox"
+              checked={automatic}
+              onChange={(e) => setAutomatic(e.target.checked)}
+            />
+            목록 자동 갱신 ({horizon === "day" ? "60초" : "5분"}) · 화면을 보고
+            있을 때 갱신
+          </label>
           {scanError && (
             <p role="alert" className={styles.error}>
               {scanError}
@@ -1154,8 +1215,9 @@ export function StockLab() {
               <>
                 <p className={styles.smallNote}>
                   분석 {screen.rows.length}/{screen.universe}종목 · 수집{" "}
-                  {clock(screen.asOf)} KST · {screen.cacheSeconds}초 캐시 · 매수
-                  검토 {screen.rows.filter((r) => r.signal.eligible).length}종목
+                  {clock(screen.asOf)} KST · {screen.cacheSeconds}초 캐시 ·{" "}
+                  {horizon === "day" ? "조건·위험 기준 충족" : "매수 검토"}{" "}
+                  {screen.rows.filter((r) => r.signal.eligible).length}종목
                   {screen.failed.length
                     ? ` · 조회 실패 ${screen.failed.length}종목 (${screen.failed.join(", ")})`
                     : ""}
@@ -1188,6 +1250,11 @@ export function StockLab() {
                           ? `${r.signal.score / 25}/4`
                           : "—"}
                         <small>{r.signal.label}</small>
+                        {horizon === "day" && (
+                          <small>
+                            판정 봉 종가 {fmt(r.signal.basisPrice)}원
+                          </small>
+                        )}
                       </span>
                       <ArrowUpRight size={18} />
                     </button>

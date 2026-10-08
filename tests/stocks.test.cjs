@@ -268,6 +268,53 @@ test("Bollinger bands use population variance and profile conserves volume", () 
     3000,
   );
 });
+test("regular-session VWAP never mixes premarket volume or treats a missing 09:00 anchor as complete", () => {
+  const times = ["08:00", "08:59", "09:00", "09:01", "15:30", "16:00"];
+  const prices = [900, 900, 10, 20, 999, 999];
+  const bars = times.map((time, i) => ({
+    ...bar(prices[i], i),
+    time: Date.parse(`2026-10-08T${time}:00+09:00`),
+    date: "2026-10-08",
+  }));
+  const rows = calculateIndicators(bars, "2026-10-08", "1m");
+  assert.deepEqual(
+    rows.map((r) => r.vwap),
+    [null, null, 10, 15, null, null],
+  );
+  assert.ok(
+    calculateIndicators(
+      bars.filter((_, i) => i !== 2),
+      "2026-10-08",
+      "1m",
+    ).every((r) => r.vwap === null),
+  );
+});
+test("Toss end-labelled minute candles normalize to the same interval start as Yahoo", () => {
+  const raw = {
+    timestamp: "2026-10-08T09:01:00+09:00",
+    openPrice: "100",
+    highPrice: "102",
+    lowPrice: "99",
+    closePrice: "101",
+    volume: "1000",
+    currency: "KRW",
+  };
+  const start = Date.parse("2026-10-08T09:00:00+09:00");
+  const toss = parseTossCandles([raw], "1m");
+  const yahoo = parseYahoo({
+    timestamp: [start / 1000],
+    indicators: {
+      quote: [
+        { open: [100], high: [102], low: [99], close: [101], volume: [1000] },
+      ],
+    },
+  });
+  assert.deepEqual(toss, yahoo);
+  assert.equal(
+    parseTossCandles([raw], "1d")[0].time,
+    Date.parse(raw.timestamp),
+  );
+});
 test("fractals require two later bars; screener never consumes current-day or future bars", () => {
   const bars = [10, 11, 15, 12, 11].map(bar);
   const before = calculateIndicators(bars.slice(0, 4), bars[0].date);

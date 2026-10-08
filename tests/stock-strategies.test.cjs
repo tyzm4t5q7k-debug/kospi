@@ -84,6 +84,55 @@ test("day strategy refuses stale data and a session missing its VWAP opening anc
   assert.equal(partial.score, null);
   assert.match(partial.risks.join(" "), /VWAP/);
 });
+test("cached unfinished candles do not become complete when only the clock or quote advances", () => {
+  const bars = minuteBars();
+  const captured = Date.parse("2026-10-08T10:59:30+09:00");
+  const later = captured + 45000;
+  const before = analyzeHorizon(bars, [], "day", captured, captured);
+  const sameSnapshot = analyzeHorizon(bars, [], "day", later, captured);
+  assert.deepEqual(sameSnapshot, before);
+  assert.equal(sameSnapshot.basisTime, bars.at(-2).time);
+  const fresh = analyzeHorizon(bars, [], "day", later, later);
+  assert.equal(fresh.basisTime, bars.at(-1).time);
+  assert.equal(analyzeHorizon(bars, [], "day", later, NaN).score, null);
+  const stale = analyzeHorizon(bars, [], "day", captured + 7 * 60000, captured);
+  assert.equal(stale.score, null);
+});
+test("day analysis excludes premarket history, requires sixty regular minutes, and stops after session", () => {
+  const regular = minuteBars();
+  const premarket = regular
+    .slice(0, 60)
+    .map((b) => ({
+      ...b,
+      time: b.time - 3600000,
+      close: 900,
+      high: 901,
+      open: 900,
+      low: 899,
+    }));
+  const now = Date.parse("2026-10-08T11:00:00+09:00");
+  assert.deepEqual(
+    analyzeHorizon([...premarket, ...regular], [], "day", now),
+    analyzeHorizon(regular, [], "day", now),
+  );
+  assert.equal(
+    analyzeHorizon(
+      [...premarket, ...regular.slice(0, 59)],
+      [],
+      "day",
+      Date.parse("2026-10-08T09:59:00+09:00"),
+    ).score,
+    null,
+  );
+  const closed = analyzeHorizon(
+    regular,
+    [],
+    "day",
+    Date.parse("2026-10-08T15:30:00+09:00"),
+  );
+  assert.equal(closed.eligible, false);
+  assert.match(closed.risks.join(" "), /09:00~15:30/);
+});
 test("completed week aggregation excludes the current week and preserves OHLCV", () => {
   const row = (date, open, high, low, close, volume) => ({
     time: Date.parse(date + "T00:00:00Z"),
