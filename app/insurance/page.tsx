@@ -37,6 +37,7 @@ export default function InsurancePage() {
         </Link>
         <nav aria-label="주요 메뉴">
           <Link href="/">포트폴리오</Link>
+          <Link href="/construction">GS건설 현장관리</Link>
           <Link href="/stocks">국내 주식</Link>
           <Link href="/insurance" aria-current="page">
             보험사업 분석

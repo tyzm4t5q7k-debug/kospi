@@ -23,6 +23,7 @@
     "../lib/stock-strategies.ts",
     "../lib/personal-connection.ts",
     "../lib/stock-client.ts",
-    "../lib/insurance-economics.ts"
+    "../lib/insurance-economics.ts",
+    "../lib/construction-economics.ts"
   ]
 }
