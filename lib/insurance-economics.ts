@@ -44,7 +44,7 @@ export function gaEconomics(input: GaScenario) {
     servicingCost,
     campaign,
     unitContribution,
-    contribution: (contracts * unitContribution - campaign) || 0,
+    contribution: contracts * unitContribution - campaign || 0,
   };
 }
 
