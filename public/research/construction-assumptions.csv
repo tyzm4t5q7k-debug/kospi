@@ -1,0 +1,7 @@
+model,month,planned_receipt_eok,base_payment_eok,material_change_allocation,receipt_share,payment_weight
+synthetic_site_A_v1.0,M1,15,16,0,0.15,16
+synthetic_site_A_v1.0,M2,20,19,0,0.20,19
+synthetic_site_A_v1.0,M3,20,20,0.35,0.20,20
+synthetic_site_A_v1.0,M4,20,17,0.35,0.20,17
+synthetic_site_A_v1.0,M5,15,11,0.20,0.15,11
+synthetic_site_A_v1.0,M6,10,7,0.10,0.10,7
