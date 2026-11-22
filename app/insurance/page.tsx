@@ -9,6 +9,12 @@ import {
   sourceUrl,
 } from "../../lib/insurance-research";
 import { InsuranceSimulator } from "./insurance-simulator";
+import {
+  ClosingAnalysis,
+  EvidenceGuide,
+  RetentionAnalysis,
+} from "./company-disclosures";
+import { disclosuresReviewedAt } from "../../lib/insurance-disclosures";
 import styles from "./insurance.module.css";
 
 export const metadata: Metadata = {
@@ -71,7 +77,8 @@ export default function InsurancePage() {
             </div>
             <p className={styles.caption}>
               김승현의 개인 분석 포트폴리오 · 한화라이프랩 공식 서비스 아님 ·
-              자료 확인 {reviewedAt}
+              사업·손익 확인 {reviewedAt} · 결산·유지율 확인{" "}
+              {disclosuresReviewedAt}
             </p>
           </div>
           <aside
@@ -105,12 +112,16 @@ export default function InsurancePage() {
         </section>
 
         <nav className={styles.sectionNav} aria-label="보험사업 분석 목차">
-          <a href="#products">01 판매 영역</a>
-          <a href="#financials">02 회사 실적</a>
-          <a href="#simulation">03 수익 실험실</a>
-          <a href="#strategy">04 영업전략</a>
+          <a href="#products">판매 영역</a>
+          <a href="#disclosures">공식 결산공고</a>
+          <a href="#financials">회사 손익</a>
+          <a href="#retention">2026 상반기 유지율</a>
+          <a href="#simulation">가정 시뮬레이션</a>
+          <a href="#strategy">영업전략</a>
           <a href="#sources">출처·한계</a>
         </nav>
+
+        <EvidenceGuide />
 
         <section id="products" className={styles.section}>
           <div className={styles.sectionHeading}>
@@ -177,13 +188,17 @@ export default function InsurancePage() {
           </details>
         </section>
 
+        <ClosingAnalysis />
+
         <section id="financials" className={styles.section}>
           <div className={styles.sectionHeading}>
             <div>
-              <p className={styles.eyebrow}>02 / COMPANY ECONOMICS</p>
+              <p className={styles.eyebrow}>03 / COMPANY ECONOMICS</p>
               <h2>회사 전체는 얼마나 남겼을까</h2>
             </div>
-            <span className={styles.tag}>2025 결산 · 2차 집계</span>
+            <span className={styles.secondaryBadge}>
+              2차 자료 · 2025 손익 집계
+            </span>
           </div>
           <p className={styles.sectionIntro}>
             사람인에 게시된 NICE평가정보의 회사 전체 수치입니다. 특정 상품의
@@ -272,17 +287,23 @@ export default function InsurancePage() {
           </p>
         </section>
 
+        <RetentionAnalysis />
+
         <section id="simulation" className={styles.section}>
           <div className={styles.sectionHeading}>
             <div>
-              <p className={styles.eyebrow}>03 / DECISION LAB</p>
+              <p className={styles.eyebrow}>05 / DECISION LAB</p>
               <h2>더 많이 팔면, 더 많이 남을까</h2>
             </div>
-            <span className={styles.assumptionTag}>모든 입력값은 가정</span>
+            <span className={styles.assumptionTag}>
+              가정 기반 · 실제 회사 수익 예측 아님
+            </span>
           </div>
           <p className={styles.sectionIntro}>
             실제 회사의 요율이나 예측이 아닌 의사결정 연습입니다. 가정을 바꾸고,
-            결과가 뒤집히는 지점을 확인해 보세요.
+            결과가 뒤집히는 지점을 확인해 보세요. 위 결산·유지율 자료는
+            시뮬레이션 입력값에 자동 반영되지 않습니다. 계산 결과는 실제 공시
+            실적과 별도로 읽어야 합니다.
           </p>
           <InsuranceSimulator />
         </section>
@@ -290,7 +311,7 @@ export default function InsurancePage() {
         <section id="strategy" className={styles.section}>
           <div className={styles.sectionHeading}>
             <div>
-              <p className={styles.eyebrow}>04 / SALES STRATEGY</p>
+              <p className={styles.eyebrow}>06 / SALES STRATEGY</p>
               <h2>숫자를 현장 운영으로 연결하기</h2>
             </div>
             <span className={styles.tag}>영업관리 · 마케팅 · 전략</span>
@@ -361,6 +382,18 @@ export default function InsurancePage() {
               이 페이지는 공개 자료와 가상 실험을 활용한 제안입니다. 회사 내부
               데이터로 검증한 성과나 실제 수행 경력으로 표현하지 않습니다.
             </p>
+            <details className={styles.details}>
+              <summary>공개자료와 시뮬레이션을 연결해 설명하기</summary>
+              <p>
+                공식 결산공고에서는 자기자본 증가와 누적결손 축소를, 2026년
+                상반기 공시 분석 보도에서는 회차별 유지율의 다른 흐름을
+                확인했습니다. 이를 영업관리 관점에서 이해하기 위해 AI를 활용해
+                계약 수·유지율·환수·판촉비에 따른 공헌액을 비교하는 도구를
+                만들었습니다. 내부자료로 실제 상품별 이익이나 프로모션 효과를
+                검증한 분석이 아니라, 공개자료 이해와 가정 기반 의사결정
+                연습입니다.
+              </p>
+            </details>
           </div>
         </section>
 
@@ -371,7 +404,7 @@ export default function InsurancePage() {
               <h2>출처와 분석의 범위</h2>
             </div>
             <span className={styles.caption}>
-              확인일 {reviewedAt} · 수동 조사
+              사업·손익 {reviewedAt} · 결산·유지율 {disclosuresReviewedAt}
             </span>
           </div>
           <div className={styles.sourceList}>
@@ -389,8 +422,9 @@ export default function InsurancePage() {
             ))}
           </div>
           <p className={styles.caption}>
-            판매 영역은 공식 사업 소개, 재무 비교는 출처가 표시된 집계 자료,
-            시뮬레이션과 운영 지표는 작성자의 가정을 사용했습니다.
+            판매 영역과 결산 재무상태표는 회사 공식 자료, 손익과 유지율 비교는
+            표시된 2차 자료를 사용했습니다. 비율 계산과 해석은 작성자의
+            분석이며, 시뮬레이션과 운영 지표 정의안은 가정입니다.
             제휴·상품·정책은 변경될 수 있으며, 이 페이지는 실시간 공시나 보험
             가입 상담 서비스가 아닙니다.
           </p>

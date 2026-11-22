@@ -1,3 +1,9 @@
+import {
+  closingStatements,
+  disclosuresReviewedAt,
+  retentionEvidence,
+} from "./insurance-disclosures";
+
 export const reviewedAt = "2026.11.18";
 
 export const insuranceSources = [
@@ -48,7 +54,21 @@ export const insuranceSources = [
     title: "한화라이프랩 · 제21기 결산공고",
     url: "https://www.hanwhalifelab.co.kr/company/notice_view.asp?aidx=36",
     kind: "회사 공식 · 2026.03.23",
-    note: "2025 결산 관련 공식 공고 접근 경로. 상품별 손익을 제공하는 자료로 해석하지 않음.",
+    note: "2025.12.31 재무상태표 원문 대조. 자산·부채·자본·현금·이연법인세자산 등을 확인했으며, 손익 주석과 상품별 이익은 확인 대상에 포함되지 않음. 확인 2026.11.22.",
+  },
+  ...closingStatements.slice(0, 2).map((statement) => ({
+    id: `closing-${statement.year}`,
+    title: `한화라이프랩 · ${statement.period} 결산공고`,
+    url: statement.url,
+    kind: `회사 공식 · ${statement.publishedAt}`,
+    note: `${statement.year}.12.31 재무상태표 원문 대조. 억 원 환산 및 재무비율 직접 계산. 확인 ${disclosuresReviewedAt}.`,
+  })),
+  {
+    id: "retention-report",
+    title: "보험저널 · 한화생명 산하 GA 유지율 비교 보도",
+    url: retentionEvidence.url,
+    kind: `2차 자료 · ${retentionEvidence.publishedAt}`,
+    note: "2025·2026 상반기 한화라이프랩 유지율과 설계사 수. 협회 공시를 분석한 기사 수치를 확인했으며 협회 원문 직접 대조는 미완료. 확인 2026.11.22. 시뮬레이션 기본값과 별도.",
   },
   {
     id: "ifrs",
